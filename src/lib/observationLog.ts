@@ -2,7 +2,7 @@ import type { MetricsAtTime } from "./mockData";
 import { getDebrisHealthStatus } from "./debrisHealth";
 import { HIGH_TRAFFIC_THRESHOLD } from "./vesselDensity";
 
-const STATION_ID = "8771450";
+import { getNoaaStationId } from "./noaaService";
 
 /** Alert severity for styling (Red / Yellow) */
 export type AlertSeverity = "red" | "yellow";
@@ -60,10 +60,12 @@ export function getNewObservationEntries(
   current: MetricsAtTime,
   viewDate: Date,
   previous: MetricsAtTime | null,
-  isLive?: boolean
+  isLive?: boolean,
+  stationId?: string
 ): ObservationLogEntry[] {
   const entries: ObservationLogEntry[] = [];
   const idBase = viewDate.getTime().toString(36);
+  const station = stationId != null && String(stationId).trim() !== "" ? String(stationId).trim() : getNoaaStationId();
 
   const vesselNow = getVesselLevel(current.boatTraffic);
   const vesselPrev = previous ? getVesselLevel(previous.boatTraffic) : "green";
@@ -72,7 +74,7 @@ export function getNewObservationEntries(
       id: `${idBase}-vessel`,
       time: new Date(viewDate),
       severity: vesselNow === "red" ? "red" : "yellow",
-      message: `Vessel Density exceeds safety threshold at Station ${STATION_ID}.`,
+      message: `Vessel Density exceeds safety threshold at Station ${station}.`,
     });
   }
 
@@ -83,7 +85,7 @@ export function getNewObservationEntries(
         id: `${idBase}-high-traffic`,
         time: new Date(viewDate),
         severity: "red",
-        message: `High Traffic: ${current.boatTraffic} vessels within 500m exceeds 2026 projection trend threshold (${HIGH_TRAFFIC_THRESHOLD}) at Station ${STATION_ID}.`,
+        message: `High Traffic: ${current.boatTraffic} vessels within 500m exceeds 2026 projection trend threshold (${HIGH_TRAFFIC_THRESHOLD}) at Station ${station}.`,
       });
     }
   }
@@ -95,7 +97,7 @@ export function getNewObservationEntries(
       id: `${idBase}-turbidity`,
       time: new Date(viewDate),
       severity: turbNow === "red" ? "red" : "yellow",
-      message: `Turbidity ${turbNow === "red" ? "exceeds safe level" : "above environmental standard"} at Station ${STATION_ID}.`,
+      message: `Turbidity ${turbNow === "red" ? "exceeds safe level" : "above environmental standard"} at Station ${station}.`,
     });
   }
 
@@ -108,7 +110,7 @@ export function getNewObservationEntries(
       id: `${idBase}-debris`,
       time: new Date(viewDate),
       severity: debrisStatusNow === "critical" ? "red" : "yellow",
-      message: `Marine debris density ${debrisStatusNow === "critical" ? "critical" : "in caution range"} at Station ${STATION_ID}.`,
+      message: `Marine debris density ${debrisStatusNow === "critical" ? "critical" : "in caution range"} at Station ${station}.`,
     });
   }
 
@@ -119,7 +121,7 @@ export function getNewObservationEntries(
       id: `${idBase}-temp`,
       time: new Date(viewDate),
       severity: tempNow === "red" ? "red" : "yellow",
-      message: `Water temperature ${tempNow === "red" ? "critical" : "elevated"} at Station ${STATION_ID}.`,
+      message: `Water temperature ${tempNow === "red" ? "critical" : "elevated"} at Station ${station}.`,
     });
   }
 

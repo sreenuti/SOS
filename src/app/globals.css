@@ -100,3 +100,5 @@ input[type="range"]::-moz-range-thumb {
     transform: translateX(1350px) translateY(0);
   }
 }
+
+/* Pulse pins use SVG <animateTransform> in CoastMap for concentric pulse (no CSS). */

@@ -2,12 +2,18 @@
 
 ## Overview
 
-The dashboard is a **single-page app** built with Next.js App Router. It has two **modes**:
+The dashboard is a **single-page app** built with Next.js App Router. It has two **modes** and a **National SOS Marine Network** of five NOAA CO-OPS stations.
 
-1. **Real-Time Monitoring** — One **view date** drives all visualizations over a **30-day** window; the timeline slider is the single source of truth. Data is mock (or NOAA/USGS-style); Water Temp & Turbidity are labeled for **Galveston Station 8771450**.
-2. **Research History Mode** — A **view year** (2000–2026) drives research charts and historical markers. Data comes from **Dolphin Research Charts Data Analysis** (health tax, entanglement risk, mortality by year).
+1. **Real-Time Monitoring** — One **view date** drives all visualizations over a **30-day** window; the timeline slider is the single source of truth. **Station** is selected from the USA map (CoastMap); live water temperature is fetched per station via NOAA API; metrics and charts use that station. Data is cached (~10 min) when switching modes.
+2. **Research History Mode** — A **view year** (2000–2026) drives research charts and historical markers. Data comes from **Dolphin Research Charts Data Analysis** with **regional baselines** for the **selected station** (Health Tax baseline °F per region: e.g. 85.2 Gulf/Florida, 68 Northeast/West).
 
 ## High-Level Data Flow
+
+### Station context and USA map
+
+- **StationContext** (`src/context/StationContext.tsx`): Holds `selectedStationId`, `setSelectedStationId`, `selectedStation`, `stations`. Provided in `layout.tsx`. Default from env `NEXT_PUBLIC_NOAA_STATION_ID` or Galveston 8771450.
+- **Stations** (`src/lib/noaaStations.ts`): Five stations — Santa Monica 9410840, Galveston 8771450, Key West 8724580, Charleston 8665530, Woods Hole 8447930. Each has `id`, `name`, `lat`, `lon`, `zone`, `baselineTempF`.
+- **CoastMap** (`src/components/CoastMap.tsx`): Continental USA SVG; clickable pulse pins; selecting a pin sets `selectedStationId`.
 
 ### Real-Time Mode
 
@@ -16,21 +22,21 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 │  Page (page.tsx)                                                          │
 │  • dashboardMode = "realtime"                                             │
 │  • viewDate state                                                         │
-│  • dataset = getMockTimeSeries() (30 days, 15-min points)                 │
+│  • dataset = getMockTimeSeries() + live merge; loading when no cache       │
 │  • metrics = getMetricsAtTime(dataset, viewDate)                           │
-│  • latestReading from useNoaaTemperature()                                │
+│  • selectedStationId from StationContext; fetchLiveOceanData(stationId); cache │
 └─────────────────────────────────────────────────────────────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
 ┌──────────────┐    ┌──────────────────┐    ┌─────────────────────────────┐
-│ MetricCards  │    │ Charts            │    │ TimelineSlider              │
-│ (metrics,    │    │ (dailyDataset,    │    │ mode="realtime"             │
-│  stationLabel)│   │  debrisMortality, │    │ value ↔ viewDate (30 days)  │
-└──────────────┘    │  historical…)     │    └─────────────────────────────┘
-                    └──────────────────┘
+│ CoastMap     │    │ MetricCards      │    │ TimelineSlider              │
+│ (station     │    │ Charts           │    │ mode="realtime"             │
+│  selection)  │    │ ScientificSummary│    │ value ↔ viewDate (30 days)  │
+└──────────────┘    └──────────────────┘    └─────────────────────────────┘
 ```
 
 - **viewDate**: The moment in time the dashboard is “showing.” All real-time charts and metric cards use this.
+- **selectedStationId**: Drives NOAA fetch and regional baseline (Scientific Summary, Health Tax). See "Station context and USA map" below.
 - **Slider**: In real-time mode, [0, 1] maps to [30 days ago, now]. Moving the slider updates `viewDate`.
 - **Record High alert**: When mortality risk from current temp ≥ 5.90% (2026 threshold), `RecordHighAlert` is shown.
 
@@ -40,9 +46,9 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  Page (page.tsx)                                                          │
 │  • dashboardMode = "research"                                             │
-│  • researchSliderValue ∈ [0, 1]                                           │
+│  • researchSliderValue ∈ [0, 1]; selectedStationId from StationContext    │
 │  • viewYear = 2000 + round(researchSliderValue * 26)                      │
-│  • researchData = getResearchYearSeries() (2000–2026)                     │
+│  • researchData = getResearchYearSeries(stationId) — regional baseline     │
 └─────────────────────────────────────────────────────────────────────────┘
          │                    │
          ▼                    ▼
@@ -71,16 +77,16 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 - Real-time mode shows: MetricCards, DebrisComposition, sync bar, HistoricalMortalityChart, TemperatureMortalityChart, BoatTrafficMortalityChart, DebrisMortalityChart, ScientistsInsight, TimelineSlider (30-day), LiveObservationLog.
 - Research mode shows: HistoricalMarkers, ResearchHealthTaxChart, ResearchEntanglementMortalityChart, ResearchTemperatureMortalityChart, TimelineSlider (year).
 
-### 2. Real-Time Data Layer (`src/lib/mockData.ts`)
+### 2. Real-Time Data Layer
 
-- **getMockTimeSeries()**: Deterministic time series for the last `RANGE_DAYS` (30) at 15-minute intervals. Fields: `time`, `temperature`, `dolphinMortality`, `boatTraffic`, `turbidity`, `debris`.
-- **getMetricsAtTime(dataset, viewDate)**: Interpolates or clamps to the nearest point; returns `{ boatTraffic, turbidity, waterTemp, marineDebris }`.
-- **sliderValueToDate(value)** / **dateToSliderValue(date)**: Map between slider [0, 1] and a `Date` in the 30-day window.
-- **getDebrisMortalitySeries7Days()**, **getDailyAggregatedSeries()**: Used by Debris and Temp/Boat charts.
+- **mockData.ts**: **getMockTimeSeries()** (30 days, 15-min), **getMetricsAtTime()**, slider↔date helpers; 2026 ceilings (marine debris 687 MT, vessel 18,279/month), daily flux ±5%, entanglement 1 in 5.
+- **fetchLiveOceanData.ts**: Fetches NOAA water temperature by `stationId`; product `water_temperature`, datum `mllw`, units `english`; maps to `ChartData`; fallback last-known or 78.5°F; called every 10 min; cache used when &lt; 10 min old.
+- **noaaService.ts**: Safe env getters — `getNoaaStationId()`, `getNoaaApiUrl()`, `isNoaaConfigured()`.
+- **noaaStations.ts**: Five stations with `baselineTempF` per region; `getStationById`, `getDefaultStationId`.
 
 ### 3. Research Data Layer (`src/lib/researchModeData.ts`)
 
-- **getResearchYearSeries()**: Returns `ResearchYearPoint[]` for years 2000–2026. Each point has: `year`, `temperatureF`, `survivalStrengthPct` (Health Tax: 100 − 2×(temp−85)), `entanglementDenominator` (50→5), `entanglementRiskPct`, `mortalityRiskPct`, `deathsMin`, `deathsMax`, `keyEvent`.
+- **getResearchYearSeries(stationId?)**: Returns `ResearchYearPoint[]` for years 2000–2026; uses **regional baseline** for Health Tax when `stationId` is provided (via `getHistoricalBaselineTempF` in survivalScore.ts).
 - **MORTALITY_RISK_THRESHOLD_2026_PCT** (5.9): Used by Record High alert in real-time mode.
 
 ### 4. Component Roles
@@ -89,7 +95,10 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 |-----------|----------------|
 | **page.tsx** | Holds `dashboardMode`, `viewDate`, `viewYear`, `researchSliderValue`, datasets, metrics; wires ModeController, slider handlers, Back to Live; conditionally renders real-time vs research UI. |
 | **ModeController** | Toggle between Real-Time (Live pulse icon) and Research (Library icon). |
-| **MetricCards** | Displays metrics; optional `stationLabel` (e.g. Galveston Station 8771450). |
+| **CoastMap** | USA map with pulse pins; click selects station; drives StationContext. |
+| **MetricCards** | Displays metrics; `stationLabel` from selected station. |
+| **ScientificSummaryCard** | Current zone, station name/id, Health Tax baseline (regional). |
+| **DashboardLoadingWidget** | Full-page/compact loading while live data is fetched. |
 | **TimelineSlider** | `mode` determines 30-day vs year range; shows `viewDate` or `viewYear`; reports onChange/onDragEnd. |
 | **StatusIndicator** | LIVE vs HISTORICAL and current viewing date (real-time only). |
 | **RecordHighAlert** | Shown when live mortality risk % ≥ 5.90% (real-time only). |
@@ -103,9 +112,10 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 - Real-time slider: `viewDate` updates are throttled (~40 ms) while dragging; **timelineLiveValue** keeps the thumb responsive; on release, `viewDate` is set from the final value.
 - Research slider: value maps directly to year; step = 1/(2026−2000).
 
-### 6. Loading and Errors
+### 6. Loading, cache, and errors
 
-- **Client-only mount**: `mounted` and `viewDate` are set in a `useEffect` (with `requestAnimationFrame`) so the dashboard only shows after hydration.
+- **Live data**: Loading widget until first successful fetch; cache reused when switching modes if &lt; 10 min old.
+- **Client-only mount**: `mounted` and `viewDate` set in `useEffect` so the dashboard shows after hydration.
 - **Fallback**: If still “Loading…” after 2 seconds, state is forced so the main UI (or an error) can appear.
 - **DashboardErrorBoundary** (in layout): Catches render errors and displays the message and a “Try again” button.
 
@@ -116,11 +126,12 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 
 ## File Map
 
-- **App**: `src/app/layout.tsx`, `page.tsx`, `globals.css`.
+- **App**: `src/app/layout.tsx` (StationProvider), `page.tsx`, `globals.css`.
 - **Mode / UX**: `ModeController.tsx`, `TimelineSlider.tsx`, `StatusIndicator.tsx`, `DashboardErrorBoundary.tsx`, `RecordHighAlert.tsx`, `HistoricalMarkers.tsx`.
+- **Station / map**: `StationContext.tsx`, `CoastMap.tsx`, `ScientificSummaryCard.tsx`, `DashboardLoadingWidget.tsx`.
 - **Real-time charts**: `HistoricalMortalityChart.tsx`, `TemperatureMortalityChart.tsx`, `BoatTrafficMortalityChart.tsx`, `DebrisMortalityChart.tsx`.
 - **Research charts**: `ResearchCharts.tsx` (Health Tax, Entanglement, Temp/Mortality).
-- **Data**: `src/lib/mockData.ts`, `src/lib/historicalMortalityData.ts`, `src/lib/researchModeData.ts`.
+- **Data**: `src/lib/mockData.ts`, `noaaStations.ts`, `noaaService.ts`, `fetchLiveOceanData.ts`, `survivalScore.ts` (regional baseline), `historicalMortalityData.ts`, `researchModeData.ts`.
 - **Theme**: `tailwind.config.ts`, `globals.css` (glass-card, status-pulse, etc.).
 
 ## Extending the System
@@ -129,4 +140,4 @@ The dashboard is a **single-page app** built with Next.js App Router. It has two
 - **New real-time chart**: Component that accepts `data` and (if needed) `viewDate`; add to the real-time branch in `page.tsx`.
 - **New research chart**: Component that accepts `data: ResearchYearPoint[]`; add to the research branch and use `researchData`.
 - **New historical marker**: In `HistoricalMarkers.tsx`, add another year/event and condition on `viewYear`.
-- **Real API**: Replace mock in `useNoaaTemperature` or `getMockTimeSeries()`; keep `getMetricsAtTime`, slider helpers, and mode logic so the rest of the app stays consistent.
+- **Real API**: Live water temp is already via `fetchLiveOceanData(stationId)`; station comes from CoastMap/StationContext. Keep `getMetricsAtTime`, slider helpers, and mode logic so the rest of the app stays consistent.

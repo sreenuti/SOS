@@ -19,7 +19,7 @@ This guide describes coding conventions, patterns, and how to add or change feat
 - **App**: `src/app/` — `layout.tsx`, `page.tsx`, `globals.css`.
 - **Shared logic / data**: `src/lib/` (e.g. `mockData.ts`, `researchModeData.ts`).
 - **Hooks**: `src/hooks/` (e.g. `useNoaaTemperature.ts`, `useThrottle.ts`).
-- **Context**: `src/context/` (e.g. `MarineDebrisContext.tsx`).
+- **Context**: `src/context/` (e.g. `MarineDebrisContext.tsx`, `StationContext.tsx` for selected NOAA station).
 - **Static assets**: `public/` (e.g. `public/images/`). Reference as `/images/...`.
 
 ### TypeScript
@@ -32,7 +32,7 @@ This guide describes coding conventions, patterns, and how to add or change feat
 
 - **Functional components** except where a class is required (e.g. `DashboardErrorBoundary`).
 - **Client components**: add `"use client"` at the top for pages or components that use `useState`, hooks, or browser APIs.
-- **State in the page**: Shared UI state (`viewDate`, `dashboardMode`, `researchSliderValue`, `sliderDragging`) lives in `page.tsx`; pass props down.
+- **State in the page**: Shared UI state (`viewDate`, `dashboardMode`, `researchSliderValue`, `sliderDragging`) lives in `page.tsx`; **selectedStationId** lives in `StationContext` and is set by CoastMap; pass props down.
 - **useCallback** for handlers passed to children (e.g. `handleTimelineChange`, `handleBackToLive`, `setDashboardMode`).
 - **useMemo** for derived data (e.g. `metrics`, `viewYear`, `researchData`, `dailyDataset`).
 
@@ -85,6 +85,13 @@ This guide describes coding conventions, patterns, and how to add or change feat
 
 - In `src/lib/mockData.ts`, change **`RANGE_DAYS`** (e.g. 30).
 - Update copy in `TimelineSlider.tsx` and `page.tsx` (“30 days”) and README/docs if needed.
+
+## Environment variables (NOAA / station)
+
+- **NEXT_PUBLIC_NOAA_STATION_ID** — Default station on load (e.g. `8771450`). See `src/lib/noaaService.ts`.
+- **NEXT_PUBLIC_NOAA_API_URL** — NOAA CO-OPS datagetter base URL.
+- **NEXT_PUBLIC_HISTORICAL_BASELINE_TEMP** — Fallback Health Tax baseline °F when a station has no `baselineTempF` (e.g. `85.2`).
+- Stations and regional baselines are in `src/lib/noaaStations.ts`. Use `getStationById`, `getDefaultStationId`; add a new station there and in CoastMap pins if extending the network.
 
 ## Changing the Research Year Range
 

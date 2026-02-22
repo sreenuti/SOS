@@ -1,24 +1,31 @@
-# SOS — Deep Ocean Environmental Dashboard
+# SOS — National SOS Marine Network
 
-A marine research monitoring dashboard for the **Texas Science Fair**, tracking **boat traffic**, **water quality**, **temperature**, and **dolphin mortality**. It supports two modes: **Real-Time Monitoring** (NOAA/USGS-style live data and 30-day history) and **Research History Mode** (Dolphin Research Charts, 2000–2026).
+A marine research monitoring dashboard tracking **boat traffic**, **water quality**, **temperature**, and **dolphin mortality** across the **U.S. coasts**. It supports two modes: **Real-Time Monitoring** (NOAA live data and 30-day history) and **Research History Mode** (Dolphin Research Charts, 2000–2026).
 
 ## Features
 
+### National Station Network
+
+- **Five NOAA CO-OPS stations**: Santa Monica (9410840), Galveston (8771450), Key West (8724580), Charleston (8665530), Woods Hole (8447930).
+- **Interactive USA map** — Clickable continental U.S. map with **pulse pins** at each station. Selecting a pin loads real-time data for that station and updates all graphs and regional baselines.
+- **Regional baselines** — Health Tax uses region-specific historical baselines (e.g. **85.2°F** Gulf/Florida, **68°F** Northeast/West Coast). Scientific Summary card shows **Current Zone** and baseline.
+
 ### Mode Controller
 
-- **Real-Time Monitoring** — Live-style data with a **green pulse “Live”** icon. Uses NOAA/USGS-style streams; Water Temp & Turbidity from **Galveston Station 8771450**. Synced 30-day timeline; metric cards and charts update to the same moment.
-- **Research History Mode** — **Library** icon. Charts use **Dolphin Research Charts Data Analysis** (years **2000–2026**): Health Tax (every 1°F above 85°F reduces survival strength by 2%), Entanglement Risk from 1 in 50 (2000) to 1 in 5 (2026), and mortality trends. **Historical Markers** layer: e.g. scrubbing to **2013** shows *“The Exodus: 50% of dolphins relocated due to food scarcity.”*
+- **Real-Time Monitoring** — Live-style data with a **green pulse “Live”** icon. Uses NOAA API for water temperature; station is chosen from the map. Synced 30-day timeline; metric cards and charts update to the same moment. **Loading** state and **cached** data when switching tabs.
+- **Research History Mode** — **Library** icon. Charts use **Dolphin Research Charts Data Analysis** (years **2000–2026**): Health Tax baseline, Entanglement Risk (1 in 50 → 1 in 5), and mortality trends; **regional projections** for the selected station. **Historical Markers** layer: e.g. scrubbing to **2013** shows *“The Exodus: 50% of dolphins relocated due to food scarcity.”*
 
 ### Real-Time Mode
 
-- **Synced timeline** — One slider controls the view date; all charts and metric cards update to the same moment (e.g. temperature spikes, boat traffic, dolphin mortality).
+- **Synced timeline** — One slider controls the view date; all charts and metric cards update to the same moment.
 - **Water Temperature & Dolphin Mortality** — Dual-axis chart (cyan = temperature °F, red = dolphin mortality).
 - **Boat Traffic & Dolphin Mortality** — Dual-axis chart (blue = boat traffic, red = dolphin mortality).
 - **Marine Debris & Dolphin Mortality** — Dual-axis (debris density vs mortality).
-- **Metric cards** — Boat traffic, water quality (turbidity + temperature), marine debris, survival score. Optional **station label** (e.g. Galveston Station 8771450).
+- **Metric cards** — Boat traffic, water quality (turbidity + temperature), marine debris, survival score; **station label** reflects selected station (e.g. Galveston, Key West).
 - **Record High alert** — When live data exceeds the 2026 projected mortality threshold (5.90% risk), a **“Projected Record High”** banner is shown.
 - **Back to Live** — Jump back to current (live) data when viewing historical dates.
 - **Live Observation Log** — Side panel for vessel, turbidity, debris, and temperature alerts.
+- **Loading** — Full-page loading while fetching live ocean data; **cache** avoids refetch when switching between Real-Time and Research tabs (refresh every 10 min).
 
 ### Research Mode
 
@@ -97,16 +104,24 @@ SOS/
 │   │   ├── StatusIndicator.tsx
 │   │   ├── TemperatureMortalityChart.tsx
 │   │   ├── TimelineSlider.tsx          # 30-day or year (2000–2026) by mode
-│   │   └── UnderwaterBackground.tsx
+│   │   ├── UnderwaterBackground.tsx
+│   │   ├── CoastMap.tsx                # USA map with pulse pins (station selector)
+│   │   ├── DashboardLoadingWidget.tsx
+│   │   └── ScientificSummaryCard.tsx   # Zone, station, Health Tax baseline
 │   ├── context/
-│   │   └── MarineDebrisContext.tsx
+│   │   ├── MarineDebrisContext.tsx
+│   │   └── StationContext.tsx         # Selected NOAA station (map → API & baseline)
 │   ├── hooks/
 │   │   ├── useNoaaTemperature.ts
 │   │   └── useThrottle.ts
 │   └── lib/
-│       ├── mockData.ts           # 30-day time series, metrics, slider↔date
-│       ├── historicalMortalityData.ts  # Temp vs mortality (research)
-│       ├── researchModeData.ts         # 2000–2026 series, health tax, entanglement
+│       ├── mockData.ts           # 30-day series, metrics, 2026 ceilings, daily flux
+│       ├── noaaStations.ts        # National stations (id, name, lat, lon, zone, baselineTempF)
+│       ├── noaaService.ts        # Env: station ID, API URL (safe getters)
+│       ├── fetchLiveOceanData.ts  # NOAA water temp by stationId; ChartData mapping
+│       ├── historicalMortalityData.ts
+│       ├── researchModeData.ts   # 2000–2026 series; regional baseline via stationId
+│       ├── survivalScore.ts      # Health Tax baseline by station (regional)
 │       └── ...
 ├── docs/
 │   ├── ARCHITECTURE.md
@@ -124,8 +139,22 @@ SOS/
 
 ## Configuration
 
+### Environment variables (optional)
+
+Create `.env.local` (or set in Vercel) for production:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_NOAA_STATION_ID` | Default station ID when app loads | `8771450` (Galveston) |
+| `NEXT_PUBLIC_NOAA_API_URL` | NOAA CO-OPS datagetter base URL | `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` |
+| `NEXT_PUBLIC_HISTORICAL_BASELINE_TEMP` | Fallback Health Tax baseline °F when station has none | `85.2` |
+
+Stations and regional baselines are defined in `src/lib/noaaStations.ts` (Santa Monica, Galveston, Key West, Charleston, Woods Hole).
+
+### Other settings
+
 - **Data range (Real-Time)** — Edit `RANGE_DAYS` in `src/lib/mockData.ts` (e.g. 30 days).
-- **Research years** — `RESEARCH_YEAR_MIN` / `RESEARCH_YEAR_MAX` in `src/app/page.tsx` and `src/components/TimelineSlider.tsx` (default 2000–2026).
+- **Research years** — `RESEARCH_YEAR_MIN` / `RESEARCH_YEAR_MAX` in `src/app/page.tsx` (default 2000–2026).
 - **Mortality threshold (Record High alert)** — `MORTALITY_RISK_THRESHOLD_2026_PCT` in `src/lib/researchModeData.ts` (default 5.9).
 - **Background image** — Place `dolphin_background.png` in `public/images/`; opacity in `UnderwaterBackground.tsx`.
 - **Theme** — Ocean palette and glass-card in `tailwind.config.ts` and `src/app/globals.css`.

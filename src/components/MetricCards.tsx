@@ -27,12 +27,14 @@ const SurvivalScoreIcon = () => (
 interface MetricCardsProps {
   metrics: MetricsAtTime;
   isLive?: boolean;
-  /** e.g. "Galveston Station 8771450" for real-time NOAA/USGS source */
+  /** e.g. "Galveston (8771450)" for real-time NOAA/USGS source */
   stationLabel?: string;
+  /** Station ID for region-specific Health Tax baseline (cooler north). */
+  stationId?: string;
 }
 
-export default function MetricCards({ metrics, isLive = false, stationLabel }: MetricCardsProps) {
-  const survivalScore = getSurvivalScore(metrics.waterTemp);
+export default function MetricCards({ metrics, isLive = false, stationLabel, stationId }: MetricCardsProps) {
+  const survivalScore = getSurvivalScore(metrics.waterTemp, stationId);
   const showThermalAlert = metrics.waterTemp >= THERMAL_STRESS_TEMP_THRESHOLD_F;
 
   return (

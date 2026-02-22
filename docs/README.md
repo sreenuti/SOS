@@ -6,8 +6,8 @@ This folder contains detailed documentation for the Deep Ocean Environmental Das
 
 | Document | Description |
 |----------|-------------|
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design, **Real-Time vs Research mode** data flow, component roles, timeline sync, and file map. |
-| **[CODE_GUIDE.md](CODE_GUIDE.md)** | Conventions, patterns, and how to add or change features (new charts, metrics, research data, historical markers). |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design, **National SOS Marine Network** (stations, CoastMap, StationContext), Real-Time vs Research mode data flow, regional baselines, loading/cache, component roles, and file map. |
+| **[CODE_GUIDE.md](CODE_GUIDE.md)** | Conventions, patterns, env vars, and how to add or change features (new charts, metrics, stations, research data, historical markers). |
 
 ## Quick Links
 

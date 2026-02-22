@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import UnderwaterBackground from "@/components/UnderwaterBackground";
 import { MarineDebrisProvider } from "@/context/MarineDebrisContext";
+import { StationProvider } from "@/context/StationContext";
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary";
 
 const inter = Inter({
@@ -26,12 +27,14 @@ export default function RootLayout({
         className={`${inter.variable} font-sans antialiased bg-ocean-bg text-ocean-text min-h-screen relative`}
         style={{ background: "#0a1628", color: "#f1f5f9", minHeight: "100vh" } as React.CSSProperties}
       >
-        <MarineDebrisProvider>
-          <UnderwaterBackground />
-          <div className="relative z-10">
-            <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
-          </div>
-        </MarineDebrisProvider>
+        <StationProvider>
+          <MarineDebrisProvider>
+            <UnderwaterBackground />
+            <div className="relative z-10">
+              <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
+            </div>
+          </MarineDebrisProvider>
+        </StationProvider>
       </body>
     </html>
   );

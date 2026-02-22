@@ -1,15 +1,17 @@
 /**
  * Research History Mode data (Dolphin Research Charts Data Analysis).
  * X-axis: years 2000–2026.
- * - Health Tax: Every 1°F above 85°F reduces survival strength by 2%.
+ * - Health Tax: Every 1°F above baseline reduces survival strength by 2% (baseline from env, default 85.2).
  * - Entanglement Risk: climbs from 1 in 50 (2000) to 1 in 5 (2026).
  */
+
+import { getHistoricalBaselineTempF } from "./survivalScore";
 
 export interface ResearchYearPoint {
   year: number;
   /** Mean water temp °F (from research spreadsheet trend). */
   temperatureF: number;
-  /** Survival strength %: 100 - 2*(tempF - 85) for tempF >= 85. */
+  /** Survival strength %: 100 - 2*(tempF - baseline) for tempF >= baseline. */
   survivalStrengthPct: number;
   /** Entanglement risk denominator: 1 in N (50 → 5). */
   entanglementDenominator: number;
@@ -107,15 +109,17 @@ function getDeathsBand(year: number): { min: number; max: number } {
 
 /**
  * Research mode time series: years 2000–2026.
- * Health Tax: survival strength = 100 - 2*(tempF - 85) for tempF >= 85.
+ * Health Tax: survival strength = 100 - 2*(tempF - baseline) for tempF >= baseline.
+ * Baseline is region-specific when stationId provided (cooler north).
  * Entanglement: 1 in 50 → 1 in 5.
  */
-export function getResearchYearSeries(): ResearchYearPoint[] {
+export function getResearchYearSeries(stationId?: string): ResearchYearPoint[] {
+  const baseline = getHistoricalBaselineTempF(stationId);
   const points: ResearchYearPoint[] = [];
   for (let year = 2000; year <= 2026; year++) {
     const temperatureF = Math.round(getTemperatureByYear(year) * 10) / 10;
-    const survivalStrengthPct = temperatureF >= 85
-      ? Math.round(Math.max(0, 100 - 2 * (temperatureF - 85)) * 10) / 10
+    const survivalStrengthPct = temperatureF >= baseline
+      ? Math.round(Math.max(0, 100 - 2 * (temperatureF - baseline)) * 10) / 10
       : 100;
     const entanglementDenominator = getEntanglementDenominator(year);
     const entanglementRiskPct = Math.round((100 / entanglementDenominator) * 100) / 100;

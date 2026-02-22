@@ -21,7 +21,7 @@ import {
   ResearchEntanglementMortalityChart,
   ResearchTemperatureMortalityChart,
 } from "@/components/ResearchCharts";
-import { getSurvivalScore } from "@/lib/survivalScore";
+import { getSurvivalScore, getHistoricalBaselineTempF } from "@/lib/survivalScore";
 import {
   getResearchYearSeries,
   MORTALITY_RISK_THRESHOLD_2026_PCT,
@@ -34,12 +34,25 @@ import {
   getMetricsAtTime,
   sliderValueToDate,
   dateToSliderValue,
+  DEBRIS_MT_CEILING_2026,
+  VESSELS_MONTHLY_CEILING_2026,
+  ENTANGLEMENT_DENOMINATOR_2026,
 } from "@/lib/mockData";
 import {
   getNewObservationEntries,
   type ObservationLogEntry,
 } from "@/lib/observationLog";
 import LiveObservationLog from "@/components/LiveObservationLog";
+import ScientificSummaryCard from "@/components/ScientificSummaryCard";
+import DashboardLoadingWidget from "@/components/DashboardLoadingWidget";
+import {
+  fetchLiveOceanData,
+  chartDataTimeMs,
+  type ChartData,
+} from "@/lib/fetchLiveOceanData";
+import { useStation } from "@/context/StationContext";
+import type { TimeSeriesPoint } from "@/lib/mockData";
+import CoastMap from "@/components/CoastMap";
 
 const RESEARCH_YEAR_MIN = 2000;
 const RESEARCH_YEAR_MAX = 2026;
@@ -48,8 +61,11 @@ const SLIDER_THROTTLE_MS = 40;
 
 const TICK_MS = 3000; // live update every 3 seconds
 const ADVANCE_MS = 3 * 60 * 1000; // advance view by 3 minutes each tick
+const LIVE_OCEAN_POLL_MS = 10 * 60 * 1000; // real-time NOAA refresh every 10 minutes
+const LIVE_TEMP_MATCH_MS = 15 * 60 * 1000; // use live temp if within 15 min of point
 
 export default function DashboardPage() {
+  const { selectedStationId, selectedStation } = useStation();
   const [mounted, setMounted] = useState(false);
   const [viewDate, setViewDate] = useState<Date | null>(null);
   const [sliderDragging, setSliderDragging] = useState(false);
@@ -57,8 +73,42 @@ export default function DashboardPage() {
   const [researchSliderValue, setResearchSliderValue] = useState(0.5); // ~2013
 
   const dataset = useMemo(() => (mounted ? getMockTimeSeries() : []), [mounted]);
-  const researchData = useMemo(() => (mounted ? getResearchYearSeries() : []), [mounted]);
-  const dailyDataset = useMemo(() => getDailyAggregatedSeries(dataset), [dataset]);
+  const researchData = useMemo(() => (mounted ? getResearchYearSeries(selectedStationId) : []), [mounted, selectedStationId]);
+
+  /** Live ocean temperature from NOAA; cached across tab switches; refreshed every 10 min in Real-Time mode. */
+  const [liveOceanData, setLiveOceanData] = useState<ChartData[]>([]);
+  const [isLoadingLiveOcean, setIsLoadingLiveOcean] = useState(false);
+  const liveOceanDataRef = useRef<ChartData[]>([]);
+  const lastLiveOceanFetchAtRef = useRef<number>(0);
+  liveOceanDataRef.current = liveOceanData;
+
+  /** Merged series (mock + live NOAA temps) and daily aggregated series in one pass to avoid TDZ. */
+  const { mergedDataset, dailyDataset } = useMemo(() => {
+    const base = dataset;
+    if (!mounted || !base.length) {
+      return { mergedDataset: base, dailyDataset: getDailyAggregatedSeries(base) };
+    }
+    if (!liveOceanData.length) {
+      return { mergedDataset: base, dailyDataset: getDailyAggregatedSeries(base) };
+    }
+    const merged: TimeSeriesPoint[] = base.map((p) => {
+      let bestTemp: number | null = null;
+      let bestDiff = Infinity;
+      for (const live of liveOceanData) {
+        const liveMs = chartDataTimeMs(live);
+        const diff = Math.abs(p.time - liveMs);
+        if (diff < bestDiff && diff <= LIVE_TEMP_MATCH_MS) {
+          bestDiff = diff;
+          bestTemp = live.temperature;
+        }
+      }
+      return bestTemp !== null ? { ...p, temperature: bestTemp } : p;
+    });
+    return {
+      mergedDataset: merged,
+      dailyDataset: getDailyAggregatedSeries(merged),
+    };
+  }, [mounted, dataset, liveOceanData]);
   const debrisMortalityData = useMemo(() => (mounted ? getDebrisMortalitySeries7Days() : []), [mounted]);
   const historicalMortalityData = useMemo(
     () => (mounted ? getHistoricalMortalityByTemperature() : []),
@@ -91,12 +141,43 @@ export default function DashboardPage() {
     return () => clearTimeout(timeoutId);
   }, []);
 
+  // When station changes, clear cache so new station data is fetched
+  const prevStationRef = useRef(selectedStationId);
+  useEffect(() => {
+    if (prevStationRef.current !== selectedStationId) {
+      setLiveOceanData([]);
+      lastLiveOceanFetchAtRef.current = 0;
+      prevStationRef.current = selectedStationId;
+    }
+  }, [selectedStationId]);
+
+  // Real-Time mode: fetch live ocean data for selected station; cache per tab switch (skip refetch if cache < 10 min old)
+  useEffect(() => {
+    if (dashboardMode !== "realtime" || !mounted) return;
+    const now = Date.now();
+    const cacheFresh = liveOceanDataRef.current.length > 0 && now - lastLiveOceanFetchAtRef.current < LIVE_OCEAN_POLL_MS;
+
+    const refresh = () => {
+      setIsLoadingLiveOcean(true);
+      fetchLiveOceanData(liveOceanDataRef.current, selectedStationId)
+        .then((data) => {
+          setLiveOceanData(data);
+          lastLiveOceanFetchAtRef.current = Date.now();
+        })
+        .finally(() => setIsLoadingLiveOcean(false));
+    };
+
+    if (!cacheFresh) refresh();
+    const id = setInterval(refresh, LIVE_OCEAN_POLL_MS);
+    return () => clearInterval(id);
+  }, [dashboardMode, mounted, selectedStationId]);
+
   const metrics = useMemo(
     () =>
-      viewDate && dataset.length > 0
-        ? getMetricsAtTime(dataset, viewDate)
+      viewDate && mergedDataset.length > 0
+        ? getMetricsAtTime(mergedDataset, viewDate)
         : { boatTraffic: 0, turbidity: 0, waterTemp: 0, marineDebris: 0 },
-    [dataset, viewDate]
+    [mergedDataset, viewDate]
   );
 
   /** LIVE when viewing "now" (within 2 min); HISTORICAL when scrubbing the past */
@@ -113,9 +194,14 @@ export default function DashboardPage() {
     [researchSliderValue]
   );
 
+  /** Latest live temp from NOAA feed, or hook/metrics fallback. */
+  const latestLiveTemp =
+    liveOceanData.length > 0 ? liveOceanData[liveOceanData.length - 1].temperature : null;
   /** Current mortality risk % from temp (for Record High alert). 100 - survivalScore. */
-  const currentTempForAlert = (latestReading?.temperatureF ?? metrics.waterTemp) || 0;
-  const liveMortalityRiskPct = currentTempForAlert >= 85 ? 100 - getSurvivalScore(currentTempForAlert) : 0;
+  const currentTempForAlert =
+    (latestLiveTemp ?? latestReading?.temperatureF ?? metrics.waterTemp) || 0;
+  const baselineTempF = getHistoricalBaselineTempF(selectedStationId);
+  const liveMortalityRiskPct = currentTempForAlert >= baselineTempF ? 100 - getSurvivalScore(currentTempForAlert, selectedStationId) : 0;
 
   const { setMarineDebris } = useMarineDebris();
   useEffect(() => {
@@ -126,7 +212,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!viewDate) return;
     const prev = prevMetricsRef.current;
-    const newEntries = getNewObservationEntries(metrics, viewDate, prev, isLive);
+    const newEntries = getNewObservationEntries(metrics, viewDate, prev, isLive, selectedStationId);
     if (newEntries.length > 0) {
       setLogEntries((list) => [...list, ...newEntries]);
     }
@@ -230,8 +316,8 @@ export default function DashboardPage() {
             </h1>
             <p className="text-ocean-muted mt-1 text-sm md:text-base">
               {dashboardMode === "realtime"
-                ? "Marine research monitoring — live metrics and 30-day history"
-                : "Dolphin Research Charts — 2000–2026 analysis"}
+                ? "National SOS Marine Network — live metrics and 30-day history"
+                : "Dolphin Research Charts — 2000–2026 analysis (regional projections)"}
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -259,39 +345,65 @@ export default function DashboardPage() {
         <section className="flex-1 min-w-0 space-y-6">
           {dashboardMode === "realtime" && (
             <>
-              {liveMortalityRiskPct >= MORTALITY_RISK_THRESHOLD_2026_PCT && (
-                <RecordHighAlert
-                  mortalityRiskPct={liveMortalityRiskPct}
-                  thresholdPct={MORTALITY_RISK_THRESHOLD_2026_PCT}
-                />
-              )}
-              <MetricCards
+              {isLoadingLiveOcean && liveOceanData.length === 0 ? (
+                <div className="space-y-6">
+                  <DashboardLoadingWidget fullPage label="Loading live data and charts…" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 opacity-60 pointer-events-none">
+                    <div className="h-[120px] rounded-lg bg-ocean-card/40 border border-ocean-border/40 animate-pulse" />
+                    <div className="h-[120px] rounded-lg bg-ocean-card/40 border border-ocean-border/40 animate-pulse" />
+                    <div className="h-[120px] rounded-lg bg-ocean-card/40 border border-ocean-border/40 animate-pulse" />
+                    <div className="h-[120px] rounded-lg bg-ocean-card/40 border border-ocean-border/40 animate-pulse" />
+                  </div>
+                  <div className="h-[320px] rounded-lg bg-ocean-card/20 border border-ocean-border/40 animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  {isLoadingLiveOcean && liveOceanData.length > 0 && (
+                    <div className="flex justify-end">
+                      <DashboardLoadingWidget fullPage={false} label="Updating…" />
+                    </div>
+                  )}
+                  {liveMortalityRiskPct >= MORTALITY_RISK_THRESHOLD_2026_PCT && (
+                    <RecordHighAlert
+                      mortalityRiskPct={liveMortalityRiskPct}
+                      thresholdPct={MORTALITY_RISK_THRESHOLD_2026_PCT}
+                    />
+                  )}
+                  <MetricCards
                 metrics={metrics}
                 isLive={isLive}
-                stationLabel="Galveston Station 8771450"
+                stationLabel={selectedStation ? `${selectedStation.name} (${selectedStationId})` : `Station ${selectedStationId}`}
+                stationId={selectedStationId}
               />
 
+              <CoastMap />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2">
                   <DebrisComposition />
                 </div>
-                <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-3 flex flex-col justify-center">
-                  <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1">Health Status</p>
-                  <p className="text-ocean-text text-sm">
-                    0–100 <span className="text-emerald-400">Healthy</span> · 101–300 <span className="text-amber-400">Caution</span> · &gt;300 <span className="text-red-400">Critical</span>
-                  </p>
+                <div className="space-y-3">
+                  <ScientificSummaryCard />
+                  <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-3 flex flex-col justify-center">
+                    <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1">Health Status</p>
+                    <p className="text-ocean-text text-sm">
+                      0–100 <span className="text-emerald-400">Healthy</span> · 101–300 <span className="text-amber-400">Caution</span> · &gt;300 <span className="text-red-400">Critical</span>
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
+              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center space-y-1">
                 <p className="text-ocean-muted text-sm">
-                  <strong className="text-ocean-cyan">Sync:</strong> Move the timeline to any day — all graphs and metrics update to that same moment. Water Temp & Turbidity from Galveston Station 8771450 (NOAA/USGS).
+                  <strong className="text-ocean-cyan">Sync:</strong> Move the timeline to any day — all graphs and metrics update to that same moment. Water Temp & Turbidity from {selectedStation ? selectedStation.name : `Station ${selectedStationId}`} (NOAA/USGS).
+                </p>
+                <p className="text-ocean-muted text-sm">
+                  <strong className="text-ocean-cyan">2026 projection:</strong> Marine debris ceiling {DEBRIS_MT_CEILING_2026} MT · Vessel ceiling {VESSELS_MONTHLY_CEILING_2026.toLocaleString()}/month (daily flux ±5% by peak hours). Entanglement probability locked at <strong className="text-ocean-text">1 in {ENTANGLEMENT_DENOMINATOR_2026} sightings</strong> (researched).
                 </p>
               </div>
 
               <HistoricalMortalityChart
                 data={historicalMortalityData}
-                currentTemperatureF={(latestReading?.temperatureF ?? metrics.waterTemp) || undefined}
+                currentTemperatureF={(latestLiveTemp ?? latestReading?.temperatureF ?? metrics.waterTemp) || undefined}
               />
               <TemperatureMortalityChart data={dailyDataset} />
               <BoatTrafficMortalityChart data={dailyDataset} />
@@ -307,15 +419,20 @@ export default function DashboardPage() {
                 viewDate={viewDate}
                 onSliderDrag={setSliderDragging}
               />
+                </>
+              )}
             </>
           )}
 
           {dashboardMode === "research" && (
             <>
               <HistoricalMarkers viewYear={viewYear} />
-              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
+              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center space-y-1">
                 <p className="text-ocean-muted text-sm">
                   <strong className="text-ocean-cyan">Historical Markers:</strong> Scrub the timeline to a year to see key events. Data from Dolphin Research Charts (2000–2026).
+                </p>
+                <p className="text-ocean-muted text-sm">
+                  <strong className="text-ocean-cyan">Regional projections:</strong> Health Tax and survival strength use the baseline for the selected station ({selectedStation?.zone ?? "selected zone"}).
                 </p>
               </div>
               <ResearchHealthTaxChart data={researchData} />

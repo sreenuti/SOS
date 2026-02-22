@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
 import { getHealthTaxReductionPct } from "@/lib/survivalScore";
+import { useStation } from "@/context/StationContext";
 
 interface DualAxisChartProps {
   data: TimeSeriesPoint[];
@@ -53,6 +54,7 @@ function getDayTicks(data: TimeSeriesPoint[]): number[] {
 }
 
 export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
+  const { selectedStationId } = useStation();
   const viewTs = viewDate.getTime();
   const chartData = data.map((p) => ({
     ...p,
@@ -109,11 +111,11 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
               const temp = payload.find((p) => p.dataKey === "temperature");
               const mort = payload.find((p) => p.dataKey === "dolphinMortality");
               const tempF = temp != null ? Number(temp.value) : 0;
-              const healthTaxPct = getHealthTaxReductionPct(tempF);
+              const healthTaxPct = getHealthTaxReductionPct(tempF, selectedStationId);
               const scientificContext =
                 healthTaxPct > 0
-                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above 85°F reduces by 2%)`
-                  : "No thermal health tax (below 85°F baseline)";
+                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above baseline reduces by 2%)`
+                  : "No thermal health tax (below baseline)";
               return (
                 <div
                   className="rounded-lg border px-3 py-2 shadow-lg"

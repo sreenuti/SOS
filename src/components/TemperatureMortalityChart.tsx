@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
 import { getHealthTaxReductionPct } from "@/lib/survivalScore";
+import { useStation } from "@/context/StationContext";
 
 const TEMP_COLOR = "#06b6d4";
 const CORAL_RED = "#f08080";
@@ -35,6 +36,7 @@ interface TemperatureMortalityChartProps {
 }
 
 export default function TemperatureMortalityChart({ data }: TemperatureMortalityChartProps) {
+  const { selectedStationId } = useStation();
   const chartData = useMemo(() => applyRollingAverage(data), [data]);
 
   return (
@@ -76,11 +78,11 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
               if (!active || !payload?.length || !label) return null;
               const p = payload[0].payload as TimeSeriesPoint & { mortality7dAvg?: number };
               const temp = p.temperature;
-              const healthTaxPct = getHealthTaxReductionPct(temp);
+              const healthTaxPct = getHealthTaxReductionPct(temp, selectedStationId);
               const scientificContext =
                 healthTaxPct > 0
-                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above 85°F reduces by 2%)`
-                  : "No thermal health tax (below 85°F baseline)";
+                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above baseline reduces by 2%)`
+                  : "No thermal health tax (below baseline)";
               return (
                 <div
                   className="rounded-lg border px-3 py-2 text-left shadow-lg"

@@ -7,6 +7,23 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes between points
 const RANGE_DAYS = 30;
 
+// --- 2026 Real-Time projection ceilings and entanglement ---
+/** 2026 projection: marine debris accumulation monthly ceiling (MT). At ~687 MT, entanglement = 1 in 5. */
+export const DEBRIS_MT_CEILING_2026 = 687;
+/** 2026 projection: total vessels per month as ceiling for vessel density metrics. */
+export const VESSELS_MONTHLY_CEILING_2026 = 18_279;
+/** Researched entanglement probability for 2026: 1 in N sightings. */
+export const ENTANGLEMENT_DENOMINATOR_2026 = 5;
+/** Entanglement risk % for 2026 (1 in 5 = 20%). */
+export const ENTANGLEMENT_RISK_PCT_2026 = 100 / ENTANGLEMENT_DENOMINATOR_2026;
+
+/** Daily flux ±5% by time of day; peak vessel hours (e.g. 10–14) get +5%, off-peak −5%. */
+export function getDailyFluxFactor(hourNorm: number): number {
+  // hourNorm in [0, 1) for 24h; peak at ~0.5 (noon)
+  const peak = Math.exp(-Math.pow((hourNorm - 0.5) * 4, 2));
+  return 0.95 + 0.1 * peak;
+}
+
 export interface TimeSeriesPoint {
   time: number;
   timeLabel: string;
@@ -39,6 +56,7 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
   for (let t = start; t <= now; t += INTERVAL_MS) {
     const dayFrac = (t - start) / MS_PER_DAY;
     const hour = (new Date(t).getHours() + new Date(t).getMinutes() / 60) / 24;
+    const flux = getDailyFluxFactor(hour);
 
     // Temperature 72–82°F with daily cycle (warmer afternoon)
     const tempBase = 76 + 4 * Math.sin((dayFrac * 2 * Math.PI) * 0.1);
@@ -46,13 +64,13 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
     const tempNoise = (seeded(t * 0.001) - 0.5) * 1.5;
     const temperature = Math.round((tempBase + tempCycle + tempNoise) * 10) / 10;
 
-    // Boat traffic: nearby vessels within 500m, realistic range 2–15 (Texas ship channel)
+    // Vessel density: 2026 monthly ceiling 18,279 total vessels; daily flux ±5% by peak hours (within 500m proxy)
+    const slotsPerMonth = 30 * (MS_PER_DAY / INTERVAL_MS);
+    const avgPerSlot = VESSELS_MONTHLY_CEILING_2026 / slotsPerMonth;
     const dayOfWeek = new Date(t).getDay();
-    const weekend = dayOfWeek === 0 || dayOfWeek === 6 ? 1.4 : 1;
-    const boatMidday = 20 * Math.exp(-Math.pow((hour - 0.5) * 8, 2));
-    const boatNoise = seeded(t * 0.003) * 8;
-    const rawBoat = weekend * (5 + boatMidday + boatNoise);
-    const boatTraffic = Math.max(2, Math.min(15, Math.round(2 + (13 * Math.min(rawBoat, 30) / 30))));
+    const weekend = dayOfWeek === 0 || dayOfWeek === 6 ? 1.15 : 1;
+    const boatShape = Math.exp(-Math.pow((hour - 0.5) * 4, 2));
+    const boatTraffic = Math.max(2, Math.min(20, Math.round(avgPerSlot * flux * weekend * (0.8 + 0.4 * boatShape) + (seeded(t * 0.003) - 0.5) * 2)));
 
     // Dolphin mortality 0–20: correlates with boat traffic (higher traffic → more mortality) plus baseline and noise
     const mortalityFromTraffic = (boatTraffic / 50) * 12;
@@ -65,10 +83,11 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
     const turbSpike = seeded(t * 0.004) > 0.97 ? 18 : 0;
     const turbidity = Math.round(Math.max(10, Math.min(60, turbBase + turbSpike + (seeded(t * 0.005) - 0.5) * 3)) * 10) / 10;
 
-    // Marine debris density 50–500 items/km² (realistic coastal pollution)
+    // Marine debris: 2026 monthly ceiling 687 MT; density (items/km²) with daily flux ±5%
     const debrisBase = 150 + 150 * Math.sin(dayFrac * 0.12);
     const debrisNoise = (seeded(t * 0.006) - 0.5) * 80;
-    const debris = Math.max(50, Math.min(500, Math.round(debrisBase + debrisNoise)));
+    const debrisRaw = debrisBase + debrisNoise;
+    const debris = Math.max(50, Math.min(500, Math.round(debrisRaw * flux)));
 
     points.push({
       time: t,
@@ -172,9 +191,10 @@ export interface DebrisMortalityPoint {
 
 const MONTH_MS = 30 * MS_PER_DAY; // ~1 month
 const DEBRIS_SPIKE_THRESHOLD = 320; // items/km² above which we consider a "spike"
-/** At ~687 MT projected, research shows entanglement risk 1 in 5 sightings. */
+/** At ~687 MT projected, research shows entanglement risk 1 in 5 sightings (2026). */
 const DEBRIS_ACCUMULATION_MIN_MT = 400;
-const DEBRIS_ACCUMULATION_MAX_MT = 750;
+/** Real-time 2026: monthly ceiling 687 MT; entanglement locked at 1 in 5. */
+const DEBRIS_ACCUMULATION_MAX_MT = DEBRIS_MT_CEILING_2026;
 
 /** Deterministic 12-month series: debris density + dolphin mortality with biological lag (debris spike → 70% chance mortality increase next month). */
 export function getDebrisMortalitySeries(): DebrisMortalityPoint[] {
@@ -192,10 +212,13 @@ export function getDebrisMortalitySeries(): DebrisMortalityPoint[] {
     const debrisNoise = (seeded(monthSeed * 0.11) - 0.5) * 60;
     const marineDebrisDensity = Math.max(80, Math.min(450, Math.round(debrisBase + spike + debrisNoise)));
 
-    // Projected debris accumulation (MT); mortality follows it
+    // Projected debris accumulation (MT); 2026 ceiling 687 MT (entanglement 1 in 5)
     const accumulationNorm = (marineDebrisDensity - 80) / (450 - 80);
-    const debrisAccumulation = Math.round(
-      DEBRIS_ACCUMULATION_MIN_MT + accumulationNorm * (DEBRIS_ACCUMULATION_MAX_MT - DEBRIS_ACCUMULATION_MIN_MT) + (seeded(monthSeed * 0.07) - 0.5) * 50
+    const debrisAccumulation = Math.min(
+      DEBRIS_MT_CEILING_2026,
+      Math.round(
+        DEBRIS_ACCUMULATION_MIN_MT + accumulationNorm * (DEBRIS_ACCUMULATION_MAX_MT - DEBRIS_ACCUMULATION_MIN_MT) + (seeded(monthSeed * 0.07) - 0.5) * 50
+      )
     );
     const accumNorm = (debrisAccumulation - DEBRIS_ACCUMULATION_MIN_MT) / (DEBRIS_ACCUMULATION_MAX_MT - DEBRIS_ACCUMULATION_MIN_MT);
     const dolphinMortalityCount = Math.max(0, Math.min(20, Math.round(accumNorm * 18 + 1)));
@@ -227,17 +250,22 @@ export function getDebrisMortalitySeries7Days(): DebrisMortalityPoint[] {
     const t = now - i * MS_PER_DAY;
     const daySeed = Math.floor(t / MS_PER_DAY);
 
-    // Marine debris density 80–450 items/km² with daily variation and occasional spikes
+    // Marine debris density with daily flux ±5% (peak hours); 80–450 items/km²
+    const hour = (new Date(t).getHours() + new Date(t).getMinutes() / 60) / 24;
+    const flux = getDailyFluxFactor(hour);
     const debrisBase = 150 + 150 * Math.sin(daySeed * 0.12);
     const spike = seeded(daySeed * 0.13) > 0.65 ? 100 + seeded(daySeed * 0.17) * 80 : 0;
     const debrisNoise = (seeded(daySeed * 0.11) - 0.5) * 50;
-    const marineDebrisDensity = Math.max(80, Math.min(450, Math.round(debrisBase + spike + debrisNoise)));
+    const marineDebrisDensity = Math.max(80, Math.min(450, Math.round((debrisBase + spike + debrisNoise) * flux)));
 
-    // Projected debris accumulation (MT): tracks density so chart accumulation curve is realistic (~687 MT at high density)
+    // Projected debris accumulation (MT): 2026 monthly ceiling 687 MT; entanglement 1 in 5 at ceiling
     const accumulationNorm = (marineDebrisDensity - 80) / (450 - 80);
     const accumulationNoise = (seeded(daySeed * 0.07) - 0.5) * 40;
-    const debrisAccumulation = Math.round(
-      DEBRIS_ACCUMULATION_MIN_MT + accumulationNorm * (DEBRIS_ACCUMULATION_MAX_MT - DEBRIS_ACCUMULATION_MIN_MT) + accumulationNoise
+    const debrisAccumulation = Math.min(
+      DEBRIS_MT_CEILING_2026,
+      Math.round(
+        DEBRIS_ACCUMULATION_MIN_MT + accumulationNorm * (DEBRIS_ACCUMULATION_MAX_MT - DEBRIS_ACCUMULATION_MIN_MT) + accumulationNoise
+      )
     );
 
     // Mortality line follows debrisAccumulation (scaled to 0–20 for right axis)
