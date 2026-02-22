@@ -1,16 +1,17 @@
 /**
  * Mock data generator for Deep Ocean dashboard.
- * Deterministic 30-day time series for temperature, dolphin activity, boat traffic, turbidity, debris.
+ * Deterministic 7-day (1 week) time series for temperature, dolphin mortality, boat traffic, turbidity, debris.
  */
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes between points
+const RANGE_DAYS = 7; // 1 week
 
 export interface TimeSeriesPoint {
   time: number;
   timeLabel: string;
   temperature: number;
-  dolphinActivity: number;
+  dolphinMortality: number;
   boatTraffic: number;
   turbidity: number;
   debris: number;
@@ -29,10 +30,10 @@ function seeded(seed: number): number {
   return x - Math.floor(x);
 }
 
-/** Full 30-day time series at 15-min intervals */
+/** Full 7-day time series at 15-min intervals */
 export function getMockTimeSeries(): TimeSeriesPoint[] {
   const now = Date.now();
-  const start = now - 30 * MS_PER_DAY;
+  const start = now - RANGE_DAYS * MS_PER_DAY;
   const points: TimeSeriesPoint[] = [];
 
   for (let t = start; t <= now; t += INTERVAL_MS) {
@@ -45,18 +46,18 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
     const tempNoise = (seeded(t * 0.001) - 0.5) * 1.5;
     const temperature = Math.round((tempBase + tempCycle + tempNoise) * 10) / 10;
 
-    // Dolphin activity 0–100 with peaks (morning/evening)
-    const dolphinBase = 50 + 25 * Math.sin(dayFrac * 0.2);
-    const dolphinPeak = 30 * Math.exp(-Math.pow((hour - 0.25) * 10, 2)) + 25 * Math.exp(-Math.pow((hour - 0.75) * 10, 2));
-    const dolphinNoise = (seeded(t * 0.002) - 0.5) * 10;
-    const dolphinActivity = Math.max(0, Math.min(100, Math.round(dolphinBase + dolphinPeak + dolphinNoise)));
-
     // Boat traffic 0–50 (higher on weekends and midday)
     const dayOfWeek = new Date(t).getDay();
     const weekend = dayOfWeek === 0 || dayOfWeek === 6 ? 1.4 : 1;
     const boatMidday = 20 * Math.exp(-Math.pow((hour - 0.5) * 8, 2));
     const boatNoise = seeded(t * 0.003) * 8;
     const boatTraffic = Math.max(0, Math.min(50, Math.round(weekend * (5 + boatMidday + boatNoise))));
+
+    // Dolphin mortality 0–20: correlates with boat traffic (higher traffic → more mortality) plus baseline and noise
+    const mortalityFromTraffic = (boatTraffic / 50) * 12;
+    const mortalityBase = 2 + 2 * Math.sin(dayFrac * 0.1);
+    const mortalityNoise = (seeded(t * 0.007) - 0.5) * 3;
+    const dolphinMortality = Math.max(0, Math.min(20, Math.round(mortalityBase + mortalityFromTraffic + mortalityNoise)));
 
     // Turbidity (NTU-like) 0.5–8 with some spikes
     const turbBase = 2 + 1.5 * Math.sin(dayFrac * 0.15);
@@ -72,7 +73,7 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
       time: t,
       timeLabel: new Date(t).toISOString(),
       temperature,
-      dolphinActivity,
+      dolphinMortality,
       boatTraffic,
       turbidity,
       debris,
@@ -112,16 +113,16 @@ export function getMetricsAtTime(
   };
 }
 
-/** Slider range: [0, 1] maps to [30 days ago, now] */
+/** Slider range: [0, 1] maps to [RANGE_DAYS ago, now] */
 export function sliderValueToDate(value: number): Date {
   const now = Date.now();
-  const start = now - 30 * MS_PER_DAY;
+  const start = now - RANGE_DAYS * MS_PER_DAY;
   return new Date(start + value * (now - start));
 }
 
 export function dateToSliderValue(date: Date): number {
   const now = Date.now();
-  const start = now - 30 * MS_PER_DAY;
+  const start = now - RANGE_DAYS * MS_PER_DAY;
   const t = date.getTime();
   if (t <= start) return 0;
   if (t >= now) return 1;

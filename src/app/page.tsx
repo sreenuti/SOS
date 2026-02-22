@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MetricCards from "@/components/MetricCards";
 import DualAxisChart from "@/components/DualAxisChart";
+import BoatTrafficChart from "@/components/BoatTrafficChart";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatusIndicator from "@/components/StatusIndicator";
 import {
@@ -82,6 +83,17 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const handleBackToLive = useCallback(() => {
+    const now = new Date();
+    setViewDate(now);
+    setTimelineLiveValue(dateToSliderValue(now));
+    pendingTimeline.current = null;
+    if (timelineThrottleRef.current !== null) {
+      clearTimeout(timelineThrottleRef.current);
+      timelineThrottleRef.current = null;
+    }
+  }, []);
+
   /** LIVE when viewing "now" (within 2 min); HISTORICAL when scrubbing the past */
   const isLive = useMemo(() => {
     if (!viewDate) return false;
@@ -113,13 +125,13 @@ export default function DashboardPage() {
 
   if (!mounted || !viewDate) {
     return (
-      <main className="min-h-screen bg-ocean-bg p-4 md:p-8">
+      <main className="min-h-screen p-4 md:p-8">
         <header className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-ocean-text">
             Deep Ocean Environmental Dashboard
           </h1>
           <p className="text-ocean-muted mt-1 text-sm md:text-base">
-            Marine research monitoring — live metrics and 30-day history
+            Marine research monitoring — live metrics and 7-day history
           </p>
         </header>
         <div className="flex items-center justify-center py-24 text-ocean-muted">
@@ -130,7 +142,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-ocean-bg p-4 md:p-8">
+    <main className="min-h-screen p-4 md:p-8">
       <header className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div>
@@ -138,17 +150,36 @@ export default function DashboardPage() {
               Deep Ocean Environmental Dashboard
             </h1>
             <p className="text-ocean-muted mt-1 text-sm md:text-base">
-              Marine research monitoring — live metrics and 30-day history
+              Marine research monitoring — live metrics and 7-day history
             </p>
           </div>
-          <StatusIndicator isLive={isLive} viewDate={viewDate} />
+          <div className="flex items-center gap-3 flex-wrap">
+            <StatusIndicator isLive={isLive} viewDate={viewDate} />
+            {!isLive && (
+              <button
+                type="button"
+                onClick={handleBackToLive}
+                className="px-3 py-2 rounded-lg text-sm font-medium border border-ocean-cyan/40 bg-ocean-cyan/10 text-ocean-cyan hover:bg-ocean-cyan/20 focus:outline-none focus:ring-2 focus:ring-ocean-cyan/50 transition-colors"
+                aria-label="Return to current live data"
+              >
+                Back to Live
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
       <section className="space-y-6">
         <MetricCards metrics={metrics} />
 
+        <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
+          <p className="text-ocean-muted text-sm">
+            <strong className="text-ocean-cyan">Sync:</strong> Move the timeline to any day — all graphs and metrics update to that same moment. Compare temperature spikes, boat traffic, and dolphin mortality on the same date.
+          </p>
+        </div>
+
         <DualAxisChart data={dataset} viewDate={viewDate} />
+        <BoatTrafficChart data={dataset} viewDate={viewDate} />
 
         <TimelineSlider
           value={sliderDragging ? timelineLiveValue : sliderValue}

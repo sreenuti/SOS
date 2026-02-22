@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
 
-interface DualAxisChartProps {
+interface BoatTrafficChartProps {
   data: TimeSeriesPoint[];
   viewDate: Date;
 }
@@ -42,7 +42,7 @@ function getDayTicks(data: TimeSeriesPoint[]): number[] {
   return ticks;
 }
 
-export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
+export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartProps) {
   const viewTs = viewDate.getTime();
   const chartData = data.map((p) => ({
     ...p,
@@ -53,7 +53,7 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Water Temperature & Dolphin Mortality
+        Boat Traffic & Dolphin Mortality
       </h3>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
@@ -67,17 +67,22 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
             domain={["dataMin", "dataMax"]}
             ticks={xAxisTicks}
             interval={0}
-            tickFormatter={(ts) => new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            tickFormatter={(ts) =>
+              new Date(ts).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })
+            }
             stroke="#94a3b8"
             tick={{ fill: "#94a3b8", fontSize: 11 }}
           />
           <YAxis
-            yAxisId="temp"
+            yAxisId="boats"
             orientation="left"
-            stroke="#06b6d4"
+            stroke="#f59e0b"
             tick={{ fill: "#94a3b8", fontSize: 11 }}
-            tickFormatter={(v) => `${v}°`}
-            domain={["dataMin - 2", "dataMax + 2"]}
+            tickFormatter={(v) => `${v}`}
+            domain={[0, "dataMax + 5"]}
           />
           <YAxis
             yAxisId="mortality"
@@ -95,25 +100,25 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
             }}
             labelFormatter={(ts) => formatTime(Number(ts))}
             formatter={(value: number, name: string) => [
-              name === "temperature" ? `${value} °F` : value,
-              name === "temperature" ? "Temperature" : "Dolphin Mortality",
+              name === "boatTraffic" ? `${value} vessels` : value,
+              name === "boatTraffic" ? "Boat Traffic" : "Dolphin Mortality",
             ]}
           />
           <ReferenceLine
-            yAxisId="temp"
+            yAxisId="boats"
             x={viewTs}
             stroke="#94a3b8"
             strokeDasharray="4 4"
             strokeOpacity={0.6}
           />
           <Line
-            yAxisId="temp"
+            yAxisId="boats"
             type="natural"
-            dataKey="temperature"
-            stroke="#06b6d4"
+            dataKey="boatTraffic"
+            stroke="#f59e0b"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: "#06b6d4" }}
+            activeDot={{ r: 4, fill: "#f59e0b" }}
           />
           <Line
             yAxisId="mortality"

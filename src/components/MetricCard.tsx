@@ -9,7 +9,7 @@ interface MetricCardProps {
 
 export default function MetricCard({ title, value, unit, icon }: MetricCardProps) {
   return (
-    <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/80 backdrop-blur-md shadow-xl min-h-[120px] flex flex-col justify-between">
+    <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
       <div className="flex items-center justify-between">
         <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
           {title}

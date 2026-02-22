@@ -20,9 +20,9 @@ body {
   min-height: 100vh;
 }
 
-/* Glass card utility */
+/* Glass card utility - lower opacity so background shows through */
 .glass-card {
-  @apply rounded-xl border border-ocean-border bg-ocean-card/80 backdrop-blur-md shadow-lg;
+  @apply rounded-xl border border-ocean-border bg-ocean-card/45 backdrop-blur-sm shadow-lg;
 }
 
 /* Timeline range slider - thumb */
@@ -61,5 +61,42 @@ input[type="range"]::-moz-range-thumb {
     opacity: 0.85;
     transform: scale(1.1);
     box-shadow: 0 0 14px rgba(34, 197, 94, 0.8);
+  }
+}
+
+/* Underwater background */
+@keyframes sway {
+  0%, 100% {
+    transform: translateX(0) skewX(0deg);
+  }
+  50% {
+    transform: translateX(3px) skewX(0.5deg);
+  }
+}
+
+@keyframes swim-slow {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes dolphin-swim {
+  0% {
+    transform: translateX(-150px) translateY(0);
+  }
+  25% {
+    transform: translateX(200px) translateY(-8px);
+  }
+  50% {
+    transform: translateX(550px) translateY(5px);
+  }
+  75% {
+    transform: translateX(900px) translateY(-5px);
+  }
+  100% {
+    transform: translateX(1350px) translateY(0);
   }
 }
