@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import UnderwaterBackground from "@/components/UnderwaterBackground";
 import { MarineDebrisProvider } from "@/context/MarineDebrisContext";
+import DashboardErrorBoundary from "@/components/DashboardErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,7 +28,9 @@ export default function RootLayout({
       >
         <MarineDebrisProvider>
           <UnderwaterBackground />
-          <div className="relative z-10">{children}</div>
+          <div className="relative z-10">
+            <DashboardErrorBoundary>{children}</DashboardErrorBoundary>
+          </div>
         </MarineDebrisProvider>
       </body>
     </html>

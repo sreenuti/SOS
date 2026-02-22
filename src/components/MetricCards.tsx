@@ -26,14 +26,21 @@ const SurvivalScoreIcon = () => (
 interface MetricCardsProps {
   metrics: MetricsAtTime;
   isLive?: boolean;
+  /** e.g. "Galveston Station 8771450" for real-time NOAA/USGS source */
+  stationLabel?: string;
 }
 
-export default function MetricCards({ metrics, isLive = false }: MetricCardsProps) {
+export default function MetricCards({ metrics, isLive = false, stationLabel }: MetricCardsProps) {
   const survivalScore = getSurvivalScore(metrics.waterTemp);
   const showThermalAlert = metrics.waterTemp >= THERMAL_STRESS_TEMP_THRESHOLD_F;
 
   return (
     <div className="space-y-4">
+      {stationLabel && (
+        <p className="text-ocean-muted text-xs uppercase tracking-wider">
+          Water Temp & Turbidity source: <span className="text-ocean-cyan/90">{stationLabel}</span>
+        </p>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <VesselDensity count={metrics.boatTraffic} isLive={isLive} />
       <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">

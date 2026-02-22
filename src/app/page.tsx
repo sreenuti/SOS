@@ -13,6 +13,19 @@ import { getHistoricalMortalityByTemperature } from "@/lib/historicalMortalityDa
 import ScientistsInsight from "@/components/ScientistsInsight";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatusIndicator from "@/components/StatusIndicator";
+import ModeController, { type DashboardMode } from "@/components/ModeController";
+import HistoricalMarkers from "@/components/HistoricalMarkers";
+import RecordHighAlert from "@/components/RecordHighAlert";
+import {
+  ResearchHealthTaxChart,
+  ResearchEntanglementMortalityChart,
+  ResearchTemperatureMortalityChart,
+} from "@/components/ResearchCharts";
+import { getSurvivalScore } from "@/lib/survivalScore";
+import {
+  getResearchYearSeries,
+  MORTALITY_RISK_THRESHOLD_2026_PCT,
+} from "@/lib/researchModeData";
 import type { MetricsAtTime } from "@/lib/mockData";
 import {
   getMockTimeSeries,
@@ -28,6 +41,9 @@ import {
 } from "@/lib/observationLog";
 import LiveObservationLog from "@/components/LiveObservationLog";
 
+const RESEARCH_YEAR_MIN = 2000;
+const RESEARCH_YEAR_MAX = 2026;
+
 const SLIDER_THROTTLE_MS = 40;
 
 const TICK_MS = 3000; // live update every 3 seconds
@@ -37,8 +53,11 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [viewDate, setViewDate] = useState<Date | null>(null);
   const [sliderDragging, setSliderDragging] = useState(false);
+  const [dashboardMode, setDashboardMode] = useState<DashboardMode>("realtime");
+  const [researchSliderValue, setResearchSliderValue] = useState(0.5); // ~2013
 
   const dataset = useMemo(() => (mounted ? getMockTimeSeries() : []), [mounted]);
+  const researchData = useMemo(() => (mounted ? getResearchYearSeries() : []), [mounted]);
   const dailyDataset = useMemo(() => getDailyAggregatedSeries(dataset), [dataset]);
   const debrisMortalityData = useMemo(() => (mounted ? getDebrisMortalitySeries7Days() : []), [mounted]);
   const historicalMortalityData = useMemo(
@@ -54,9 +73,22 @@ export default function DashboardPage() {
   const [logEntries, setLogEntries] = useState<ObservationLogEntry[]>([]);
   const prevMetricsRef = useRef<MetricsAtTime | null>(null);
 
+  // Client-only mount: ensures we're past hydration so state updates don't get stuck
   useEffect(() => {
-    setMounted(true);
-    setViewDate(new Date());
+    const t = requestAnimationFrame(() => {
+      setMounted(true);
+      setViewDate(new Date());
+    });
+    return () => cancelAnimationFrame(t);
+  }, []);
+
+  // Fallback: if still loading after 2s (e.g. effect blocked), force show dashboard so errors surface
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setMounted((m) => m || true);
+      setViewDate((d) => d || new Date());
+    }, 2000);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const metrics = useMemo(
@@ -74,6 +106,16 @@ export default function DashboardPage() {
     const diff = now - viewDate.getTime();
     return diff >= 0 && diff < 2 * 60 * 1000;
   }, [viewDate]);
+
+  /** Research mode: slider 0–1 maps to year 2000–2026 */
+  const viewYear = useMemo(
+    () => RESEARCH_YEAR_MIN + Math.round(researchSliderValue * (RESEARCH_YEAR_MAX - RESEARCH_YEAR_MIN)),
+    [researchSliderValue]
+  );
+
+  /** Current mortality risk % from temp (for Record High alert). 100 - survivalScore. */
+  const currentTempForAlert = (latestReading?.temperatureF ?? metrics.waterTemp) || 0;
+  const liveMortalityRiskPct = currentTempForAlert >= 85 ? 100 - getSurvivalScore(currentTempForAlert) : 0;
 
   const { setMarineDebris } = useMarineDebris();
   useEffect(() => {
@@ -146,9 +188,9 @@ export default function DashboardPage() {
     }
   }, [sliderDragging, viewDate]);
 
-  // Live advance every 3s when timeline not being dragged
+  // Live advance every 3s when timeline not being dragged (real-time mode only)
   useEffect(() => {
-    if (!viewDate || sliderDragging) return;
+    if (dashboardMode !== "realtime" || !viewDate || sliderDragging) return;
     const id = setInterval(() => {
       setViewDate((prev) => {
         if (!prev) return prev;
@@ -158,7 +200,7 @@ export default function DashboardPage() {
       });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [viewDate, sliderDragging]);
+  }, [dashboardMode, viewDate, sliderDragging]);
 
   if (!mounted || !viewDate) {
     return (
@@ -187,20 +229,27 @@ export default function DashboardPage() {
               Deep Ocean Environmental Dashboard
             </h1>
             <p className="text-ocean-muted mt-1 text-sm md:text-base">
-              Marine research monitoring — live metrics and 30-day history
+              {dashboardMode === "realtime"
+                ? "Marine research monitoring — live metrics and 30-day history"
+                : "Dolphin Research Charts — 2000–2026 analysis"}
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <StatusIndicator isLive={isLive} viewDate={viewDate} />
-            {!isLive && (
-              <button
-                type="button"
-                onClick={handleBackToLive}
-                className="px-3 py-2 rounded-lg text-sm font-medium border border-ocean-cyan/40 bg-ocean-cyan/10 text-ocean-cyan hover:bg-ocean-cyan/20 focus:outline-none focus:ring-2 focus:ring-ocean-cyan/50 transition-colors"
-                aria-label="Return to current live data"
-              >
-                Back to Live
-              </button>
+            <ModeController mode={dashboardMode} onModeChange={setDashboardMode} />
+            {dashboardMode === "realtime" && (
+              <>
+                <StatusIndicator isLive={isLive} viewDate={viewDate} />
+                {!isLive && (
+                  <button
+                    type="button"
+                    onClick={handleBackToLive}
+                    className="px-3 py-2 rounded-lg text-sm font-medium border border-ocean-cyan/40 bg-ocean-cyan/10 text-ocean-cyan hover:bg-ocean-cyan/20 focus:outline-none focus:ring-2 focus:ring-ocean-cyan/50 transition-colors"
+                    aria-label="Return to current live data"
+                  >
+                    Back to Live
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -208,48 +257,87 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 min-h-0 gap-6 flex-col xl:flex-row">
         <section className="flex-1 min-w-0 space-y-6">
-          <MetricCards metrics={metrics} isLive={isLive} />
+          {dashboardMode === "realtime" && (
+            <>
+              {liveMortalityRiskPct >= MORTALITY_RISK_THRESHOLD_2026_PCT && (
+                <RecordHighAlert
+                  mortalityRiskPct={liveMortalityRiskPct}
+                  thresholdPct={MORTALITY_RISK_THRESHOLD_2026_PCT}
+                />
+              )}
+              <MetricCards
+                metrics={metrics}
+                isLive={isLive}
+                stationLabel="Galveston Station 8771450"
+              />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <DebrisComposition />
-            </div>
-            <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-3 flex flex-col justify-center">
-              <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1">Health Status</p>
-              <p className="text-ocean-text text-sm">
-                0–100 <span className="text-emerald-400">Healthy</span> · 101–300 <span className="text-amber-400">Caution</span> · &gt;300 <span className="text-red-400">Critical</span>
-              </p>
-            </div>
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <DebrisComposition />
+                </div>
+                <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-3 flex flex-col justify-center">
+                  <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1">Health Status</p>
+                  <p className="text-ocean-text text-sm">
+                    0–100 <span className="text-emerald-400">Healthy</span> · 101–300 <span className="text-amber-400">Caution</span> · &gt;300 <span className="text-red-400">Critical</span>
+                  </p>
+                </div>
+              </div>
 
-          <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
-            <p className="text-ocean-muted text-sm">
-              <strong className="text-ocean-cyan">Sync:</strong> Move the timeline to any day — all graphs and metrics update to that same moment. Compare temperature spikes, boat traffic, and dolphin mortality on the same date.
-            </p>
-          </div>
+              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
+                <p className="text-ocean-muted text-sm">
+                  <strong className="text-ocean-cyan">Sync:</strong> Move the timeline to any day — all graphs and metrics update to that same moment. Water Temp & Turbidity from Galveston Station 8771450 (NOAA/USGS).
+                </p>
+              </div>
 
-          <HistoricalMortalityChart
-            data={historicalMortalityData}
-            currentTemperatureF={latestReading?.temperatureF ?? metrics.waterTemp || undefined}
-          />
-          <TemperatureMortalityChart data={dailyDataset} />
-          <BoatTrafficMortalityChart data={dailyDataset} />
-          <DebrisMortalityChart data={debrisMortalityData} />
+              <HistoricalMortalityChart
+                data={historicalMortalityData}
+                currentTemperatureF={(latestReading?.temperatureF ?? metrics.waterTemp) || undefined}
+              />
+              <TemperatureMortalityChart data={dailyDataset} />
+              <BoatTrafficMortalityChart data={dailyDataset} />
+              <DebrisMortalityChart data={debrisMortalityData} />
 
-          <ScientistsInsight metrics={metrics} />
+              <ScientistsInsight metrics={metrics} />
 
-          <TimelineSlider
-            value={sliderDragging ? timelineLiveValue : sliderValue}
-            onChange={handleTimelineChange}
-            onDragEnd={handleTimelineDragEnd}
-            viewDate={viewDate}
-            onSliderDrag={setSliderDragging}
-          />
+              <TimelineSlider
+                mode="realtime"
+                value={sliderDragging ? timelineLiveValue : sliderValue}
+                onChange={handleTimelineChange}
+                onDragEnd={handleTimelineDragEnd}
+                viewDate={viewDate}
+                onSliderDrag={setSliderDragging}
+              />
+            </>
+          )}
+
+          {dashboardMode === "research" && (
+            <>
+              <HistoricalMarkers viewYear={viewYear} />
+              <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-2 text-center">
+                <p className="text-ocean-muted text-sm">
+                  <strong className="text-ocean-cyan">Historical Markers:</strong> Scrub the timeline to a year to see key events. Data from Dolphin Research Charts (2000–2026).
+                </p>
+              </div>
+              <ResearchHealthTaxChart data={researchData} />
+              <ResearchEntanglementMortalityChart data={researchData} />
+              <ResearchTemperatureMortalityChart data={researchData} />
+              <TimelineSlider
+                mode="research"
+                value={researchSliderValue}
+                onChange={setResearchSliderValue}
+                onDragEnd={(v) => setResearchSliderValue(v)}
+                viewDate={new Date(viewYear, 6, 1)}
+                viewYear={viewYear}
+              />
+            </>
+          )}
         </section>
 
-        <aside className="xl:w-96 flex-shrink-0 flex flex-col min-h-[320px] xl:min-h-0 xl:h-[calc(100vh-8rem)]">
-          <LiveObservationLog entries={logEntries} />
-        </aside>
+        {dashboardMode === "realtime" && (
+          <aside className="xl:w-96 flex-shrink-0 flex flex-col min-h-[320px] xl:min-h-0 xl:h-[calc(100vh-8rem)]">
+            <LiveObservationLog entries={logEntries} />
+          </aside>
+        )}
       </div>
     </main>
   );
