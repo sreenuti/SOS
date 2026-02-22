@@ -1,5 +1,6 @@
 import type { MetricsAtTime } from "./mockData";
 import { getDebrisHealthStatus } from "./debrisHealth";
+import { HIGH_TRAFFIC_THRESHOLD } from "./vesselDensity";
 
 const STATION_ID = "8771450";
 
@@ -53,11 +54,13 @@ export function formatLogTime(date: Date): string {
 /**
  * Compare current metrics to previous; return new log entries when a metric
  * transitions into Yellow or Red. One entry per metric that newly crossed threshold.
+ * When isLive and vessel count exceeds HIGH_TRAFFIC_THRESHOLD (15), adds a High Traffic alert (2026 projection trends).
  */
 export function getNewObservationEntries(
   current: MetricsAtTime,
   viewDate: Date,
-  previous: MetricsAtTime | null
+  previous: MetricsAtTime | null,
+  isLive?: boolean
 ): ObservationLogEntry[] {
   const entries: ObservationLogEntry[] = [];
   const idBase = viewDate.getTime().toString(36);
@@ -71,6 +74,18 @@ export function getNewObservationEntries(
       severity: vesselNow === "red" ? "red" : "yellow",
       message: `Vessel Density exceeds safety threshold at Station ${STATION_ID}.`,
     });
+  }
+
+  if (isLive && current.boatTraffic > HIGH_TRAFFIC_THRESHOLD) {
+    const prevBelow = previous === null || previous.boatTraffic <= HIGH_TRAFFIC_THRESHOLD;
+    if (prevBelow) {
+      entries.push({
+        id: `${idBase}-high-traffic`,
+        time: new Date(viewDate),
+        severity: "red",
+        message: `High Traffic: ${current.boatTraffic} vessels within 500m exceeds 2026 projection trend threshold (${HIGH_TRAFFIC_THRESHOLD}) at Station ${STATION_ID}.`,
+      });
+    }
   }
 
   const turbNow = getTurbidityLevel(current.turbidity);

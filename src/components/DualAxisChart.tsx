@@ -1,7 +1,8 @@
 "use client";
 
 import {
-  LineChart,
+  ComposedChart,
+  Area,
   Line,
   XAxis,
   YAxis,
@@ -26,7 +27,9 @@ function formatTime(ts: number): string {
   });
 }
 
-/** One tick per day (use first data point of each day) so labels are within axis domain and show once per day */
+const MAX_X_TICKS = 10;
+
+/** Day-level ticks for X-axis; capped and evenly spaced to avoid overlapping labels. */
 function getDayTicks(data: TimeSeriesPoint[]): number[] {
   if (!data.length) return [];
   const ticks: number[] = [];
@@ -39,7 +42,13 @@ function getDayTicks(data: TimeSeriesPoint[]): number[] {
       ticks.push(p.time);
     }
   }
-  return ticks;
+  if (ticks.length <= MAX_X_TICKS) return ticks;
+  const result: number[] = [];
+  const step = (ticks.length - 1) / (MAX_X_TICKS - 1);
+  for (let i = 0; i < MAX_X_TICKS; i++) {
+    result.push(ticks[Math.min(Math.round(i * step), ticks.length - 1)]);
+  }
+  return result;
 }
 
 export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
@@ -56,11 +65,11 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
         Water Temperature & Dolphin Mortality
       </h3>
       <ResponsiveContainer width="100%" height={260}>
-        <LineChart
+        <ComposedChart
           data={chartData}
           margin={{ top: 5, right: 50, left: 10, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.15)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.08)" vertical={false} />
           <XAxis
             dataKey="time"
             type="number"
@@ -94,21 +103,45 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
               color: "#f1f5f9",
             }}
             labelFormatter={(ts) => formatTime(Number(ts))}
-            formatter={(value: number, name: string) => [
-              name === "temperature" ? `${value} °F` : value,
-              name === "temperature" ? "Temperature" : "Dolphin Mortality",
-            ]}
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null;
+              const temp = payload.find((p) => p.dataKey === "temperature");
+              const mort = payload.find((p) => p.dataKey === "dolphinMortality");
+              return (
+                <div
+                  className="rounded-lg border px-3 py-2 shadow-lg"
+                  style={{
+                    backgroundColor: "rgba(13, 33, 55, 0.95)",
+                    border: "1px solid rgba(45, 212, 191, 0.3)",
+                    color: "#f1f5f9",
+                    fontSize: 12,
+                  }}
+                >
+                  <p className="font-medium text-cyan-200/90 mb-1">{typeof label === "number" ? formatTime(label) : label}</p>
+                  {temp != null && <p>Temperature: {temp.value} °F</p>}
+                  {mort != null && <p>Dolphin Mortality: {mort.value}</p>}
+                </div>
+              );
+            }}
           />
           <ReferenceLine
             yAxisId="temp"
             x={viewTs}
             stroke="#94a3b8"
             strokeDasharray="4 4"
-            strokeOpacity={0.6}
+            strokeOpacity={0.5}
+          />
+          <Area
+            yAxisId="temp"
+            type="monotone"
+            dataKey="temperature"
+            fill="#06b6d4"
+            fillOpacity={0.2}
+            stroke="none"
           />
           <Line
             yAxisId="temp"
-            type="natural"
+            type="monotone"
             dataKey="temperature"
             stroke="#06b6d4"
             strokeWidth={2}
@@ -117,14 +150,14 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
           />
           <Line
             yAxisId="mortality"
-            type="natural"
+            type="monotone"
             dataKey="dolphinMortality"
             stroke="#ef4444"
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4, fill: "#ef4444" }}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

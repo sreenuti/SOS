@@ -26,7 +26,9 @@ function formatTime(ts: number): string {
   });
 }
 
-/** One tick per day (use first data point of each day) so labels are within axis domain and show once per day */
+const MAX_X_TICKS = 10;
+
+/** Day-level ticks for X-axis; capped and evenly spaced to avoid overlapping labels. */
 function getDayTicks(data: TimeSeriesPoint[]): number[] {
   if (!data.length) return [];
   const ticks: number[] = [];
@@ -39,7 +41,13 @@ function getDayTicks(data: TimeSeriesPoint[]): number[] {
       ticks.push(p.time);
     }
   }
-  return ticks;
+  if (ticks.length <= MAX_X_TICKS) return ticks;
+  const result: number[] = [];
+  const step = (ticks.length - 1) / (MAX_X_TICKS - 1);
+  for (let i = 0; i < MAX_X_TICKS; i++) {
+    result.push(ticks[Math.min(Math.round(i * step), ticks.length - 1)]);
+  }
+  return result;
 }
 
 export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartProps) {
@@ -60,7 +68,7 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
           data={chartData}
           margin={{ top: 5, right: 50, left: 10, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.15)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.08)" vertical={false} />
           <XAxis
             dataKey="time"
             type="number"
@@ -79,7 +87,7 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
           <YAxis
             yAxisId="boats"
             orientation="left"
-            stroke="#f59e0b"
+            stroke="#3b82f6"
             tick={{ fill: "#94a3b8", fontSize: 11 }}
             tickFormatter={(v) => `${v}`}
             domain={[2, 15]}
@@ -113,16 +121,16 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
           />
           <Line
             yAxisId="boats"
-            type="natural"
+            type="monotone"
             dataKey="boatTraffic"
-            stroke="#f59e0b"
+            stroke="#3b82f6"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: "#f59e0b" }}
+            activeDot={{ r: 4, fill: "#3b82f6" }}
           />
           <Line
             yAxisId="mortality"
-            type="natural"
+            type="monotone"
             dataKey="dolphinMortality"
             stroke="#ef4444"
             strokeWidth={2}

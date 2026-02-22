@@ -2,7 +2,7 @@
 
 ## Overview
 
-The dashboard is a **single-page app** built with Next.js App Router. One **view date** drives all visualizations; the **timeline slider** is the single source of truth for “current moment” in the 7-day window.
+The dashboard is a **single-page app** built with Next.js App Router. One **view date** drives all visualizations; the **timeline slider** is the single source of truth for “current moment” in the 30-day window.
 
 ## High-Level Data Flow
 
@@ -10,7 +10,7 @@ The dashboard is a **single-page app** built with Next.js App Router. One **view
 ┌─────────────────────────────────────────────────────────────────┐
 │  Page (page.tsx)                                                 │
 │  • viewDate state                                                │
-│  • dataset = getMockTimeSeries() (7 days, 15-min points)         │
+│  • dataset = getMockTimeSeries() (30 days, 15-min points)         │
 │  • metrics = getMetricsAtTime(dataset, viewDate)                 │
 └─────────────────────────────────────────────────────────────────┘
          │                    │                    │
@@ -30,7 +30,7 @@ The dashboard is a **single-page app** built with Next.js App Router. One **view
 ```
 
 - **viewDate**: The single moment in time the dashboard is “showing.” All charts draw a vertical reference line at this time; metric cards show values interpolated at this time.
-- **Slider**: Maps [0, 1] to [7 days ago, now]. Moving the slider updates `viewDate`; nothing else owns “current time” for the UI.
+- **Slider**: Maps [0, 1] to [30 days ago, now]. Moving the slider updates `viewDate`; nothing else owns “current time” for the UI.
 - **Sync**: Because every component receives the same `viewDate` (and same `data`), moving the slider once updates every chart and card to that same day/time.
 
 ## Core Concepts
@@ -48,7 +48,7 @@ The dashboard is a **single-page app** built with Next.js App Router. One **view
 
 - **getMockTimeSeries()**: Returns a deterministic time series for the last `RANGE_DAYS` (7) at 15-minute intervals. Each point has: `time`, `temperature`, `dolphinMortality`, `boatTraffic`, `turbidity`, `debris`.
 - **getMetricsAtTime(dataset, viewDate)**: Interpolates or clamps to the nearest point and returns `{ boatTraffic, turbidity, waterTemp, marineDebris }` for the metric cards.
-- **sliderValueToDate(value)** / **dateToSliderValue(date)**: Map between slider [0, 1] and a `Date` in the 7-day window.
+- **sliderValueToDate(value)** / **dateToSliderValue(date)**: Map between slider [0, 1] and a `Date` in the 30-day window.
 
 Data is **mock** and deterministic (seeded by time) so the science-fair story (e.g. boat traffic ↔ dolphin mortality) is visible without a backend.
 

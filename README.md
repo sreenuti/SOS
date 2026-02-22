@@ -1,15 +1,15 @@
 # SOS — Deep Ocean Environmental Dashboard
 
-A marine research monitoring dashboard for the **Texas Science Fair**, tracking **boat traffic**, **water quality**, **temperature**, and **dolphin mortality** over a 7-day window with synced charts and a dolphin-themed background.
+A marine research monitoring dashboard for the **Texas Science Fair**, tracking **boat traffic**, **water quality**, **temperature**, and **dolphin mortality** over a 30-day window with synced charts and a dolphin-themed background.
 
 ## Features
 
 - **Synced timeline** — One slider controls the view date; all charts and metric cards update to the same moment so you can correlate temperature spikes, boat traffic, and dolphin mortality (e.g., *"Look at July 14th—temperature hit 88°F, boat traffic was high, dolphin mortality spiked"*).
 - **Water Temperature & Dolphin Mortality** — Dual-axis chart (cyan = temperature °F, red = dolphin mortality).
-- **Boat Traffic & Dolphin Mortality** — Dual-axis chart (amber = boat traffic vessels, red = dolphin mortality).
+- **Boat Traffic & Dolphin Mortality** — Dual-axis chart (blue = boat traffic vessels, red = dolphin mortality).
 - **Metric cards** — Boat traffic, water quality (turbidity + temperature), and marine debris at the selected time.
 - **Back to Live** — Button to jump back to current (live) data when viewing historical dates.
-- **7-day range** — Data and timeline show the last 7 days by default.
+- **30-day range** — Data and timeline show the last 30 days by default.
 - **Dolphin background** — Optional full-viewport background image with semi-transparent cards so the background shows through.
 
 ## Tech Stack

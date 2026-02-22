@@ -4,14 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MetricCards from "@/components/MetricCards";
 import DebrisComposition from "@/components/DebrisComposition";
 import { useMarineDebris } from "@/context/MarineDebrisContext";
-import DualAxisChart from "@/components/DualAxisChart";
-import BoatTrafficChart from "@/components/BoatTrafficChart";
+import TemperatureMortalityChart from "@/components/TemperatureMortalityChart";
+import BoatTrafficMortalityChart from "@/components/BoatTrafficMortalityChart";
+import DebrisMortalityChart from "@/components/DebrisMortalityChart";
+import HistoricalMortalityChart from "@/components/HistoricalMortalityChart";
+import { useNoaaTemperature } from "@/hooks/useNoaaTemperature";
+import { getHistoricalMortalityByTemperature } from "@/lib/historicalMortalityData";
 import ScientistsInsight from "@/components/ScientistsInsight";
 import TimelineSlider from "@/components/TimelineSlider";
 import StatusIndicator from "@/components/StatusIndicator";
 import type { MetricsAtTime } from "@/lib/mockData";
 import {
   getMockTimeSeries,
+  getDailyAggregatedSeries,
+  getDebrisMortalitySeries7Days,
   getMetricsAtTime,
   sliderValueToDate,
   dateToSliderValue,
@@ -33,6 +39,13 @@ export default function DashboardPage() {
   const [sliderDragging, setSliderDragging] = useState(false);
 
   const dataset = useMemo(() => (mounted ? getMockTimeSeries() : []), [mounted]);
+  const dailyDataset = useMemo(() => getDailyAggregatedSeries(dataset), [dataset]);
+  const debrisMortalityData = useMemo(() => (mounted ? getDebrisMortalitySeries7Days() : []), [mounted]);
+  const historicalMortalityData = useMemo(
+    () => (mounted ? getHistoricalMortalityByTemperature() : []),
+    [mounted]
+  );
+  const { latestReading } = useNoaaTemperature();
   const [timelineLiveValue, setTimelineLiveValue] = useState(0);
   const timelineThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTimelineUpdate = useRef(0);
@@ -43,12 +56,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted || dataset.length === 0) return;
     setViewDate(new Date());
-  }, [mounted, dataset.length]);
+  }, []);
 
   const metrics = useMemo(
     () =>
@@ -58,21 +67,29 @@ export default function DashboardPage() {
     [dataset, viewDate]
   );
 
+  /** LIVE when viewing "now" (within 2 min); HISTORICAL when scrubbing the past */
+  const isLive = useMemo(() => {
+    if (!viewDate) return false;
+    const now = Date.now();
+    const diff = now - viewDate.getTime();
+    return diff >= 0 && diff < 2 * 60 * 1000;
+  }, [viewDate]);
+
   const { setMarineDebris } = useMarineDebris();
   useEffect(() => {
     setMarineDebris(metrics.marineDebris);
   }, [metrics.marineDebris, setMarineDebris]);
 
-  // Append Live Observation Log entries when metrics transition into Red/Yellow
+  // Append Live Observation Log entries when metrics transition into Red/Yellow (and High Traffic when Live & >15)
   useEffect(() => {
     if (!viewDate) return;
     const prev = prevMetricsRef.current;
-    const newEntries = getNewObservationEntries(metrics, viewDate, prev);
+    const newEntries = getNewObservationEntries(metrics, viewDate, prev, isLive);
     if (newEntries.length > 0) {
       setLogEntries((list) => [...list, ...newEntries]);
     }
     prevMetricsRef.current = metrics;
-  }, [metrics, viewDate]);
+  }, [metrics, viewDate, isLive]);
 
   const sliderValue = useMemo(
     () => (viewDate ? dateToSliderValue(viewDate) : 0),
@@ -122,14 +139,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  /** LIVE when viewing "now" (within 2 min); HISTORICAL when scrubbing the past */
-  const isLive = useMemo(() => {
-    if (!viewDate) return false;
-    const now = Date.now();
-    const diff = now - viewDate.getTime();
-    return diff >= 0 && diff < 2 * 60 * 1000;
-  }, [viewDate]);
-
   // Keep timeline live value in sync: when not dragging use viewDate; when drag starts use current slider value
   useEffect(() => {
     if (!sliderDragging && viewDate) {
@@ -153,16 +162,16 @@ export default function DashboardPage() {
 
   if (!mounted || !viewDate) {
     return (
-      <main className="min-h-screen p-4 md:p-8">
-        <header className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-ocean-text">
+      <main className="min-h-screen p-4 md:p-8" style={{ minHeight: "100vh", padding: "1rem 2rem", background: "#0a1628", color: "#f1f5f9" }}>
+        <header className="mb-8" style={{ marginBottom: "2rem" }}>
+          <h1 className="text-2xl md:text-3xl font-bold text-ocean-text" style={{ fontSize: "clamp(1.5rem, 3vw, 1.875rem)", fontWeight: 700, color: "#f1f5f9" }}>
             Deep Ocean Environmental Dashboard
           </h1>
-          <p className="text-ocean-muted mt-1 text-sm md:text-base">
-            Marine research monitoring — live metrics and 7-day history
+          <p className="text-ocean-muted mt-1 text-sm md:text-base" style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "#94a3b8" }}>
+            Marine research monitoring — live metrics and 30-day history
           </p>
         </header>
-        <div className="flex items-center justify-center py-24 text-ocean-muted">
+        <div className="flex items-center justify-center py-24 text-ocean-muted" style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "6rem 0", color: "#94a3b8" }}>
           Loading…
         </div>
       </main>
@@ -178,7 +187,7 @@ export default function DashboardPage() {
               Deep Ocean Environmental Dashboard
             </h1>
             <p className="text-ocean-muted mt-1 text-sm md:text-base">
-              Marine research monitoring — live metrics and 7-day history
+              Marine research monitoring — live metrics and 30-day history
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -199,7 +208,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-1 min-h-0 gap-6 flex-col xl:flex-row">
         <section className="flex-1 min-w-0 space-y-6">
-          <MetricCards metrics={metrics} />
+          <MetricCards metrics={metrics} isLive={isLive} />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
@@ -219,8 +228,13 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <DualAxisChart data={dataset} viewDate={viewDate} />
-          <BoatTrafficChart data={dataset} viewDate={viewDate} />
+          <HistoricalMortalityChart
+            data={historicalMortalityData}
+            currentTemperatureF={latestReading?.temperatureF ?? metrics.waterTemp || undefined}
+          />
+          <TemperatureMortalityChart data={dailyDataset} />
+          <BoatTrafficMortalityChart data={dailyDataset} />
+          <DebrisMortalityChart data={debrisMortalityData} />
 
           <ScientistsInsight metrics={metrics} />
 

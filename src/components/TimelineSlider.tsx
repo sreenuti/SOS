@@ -45,7 +45,7 @@ export default function TimelineSlider({
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
-          Historical Timeline (7 days)
+          Historical Timeline (30 days)
         </span>
         <span className="text-ocean-cyan text-sm font-mono tabular-nums">
           {formatSliderLabel(viewDate)}
@@ -62,7 +62,7 @@ export default function TimelineSlider({
         onTouchStart={() => onSliderDrag?.(true)}
         onMouseUp={handlePointerEnd}
         onTouchEnd={handlePointerEnd}
-        aria-label="Scrub through last 7 days"
+        aria-label="Scrub through last 30 days"
         className="w-full h-2 rounded-lg cursor-pointer border border-ocean-border/50 focus:outline-none focus:ring-2 focus:ring-ocean-cyan/50"
         style={{
           background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${value * 100}%, #0d2137 ${value * 100}%, #0d2137 100%)`,

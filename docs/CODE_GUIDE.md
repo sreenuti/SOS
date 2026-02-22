@@ -74,7 +74,7 @@ This guide describes coding conventions, patterns, and how to add or change feat
 ## Changing the Time Window
 
 - In `src/lib/mockData.ts`, change **`RANGE_DAYS`** (e.g. to 14 or 30).
-- Update copy in `TimelineSlider.tsx` and `page.tsx` (e.g. “7 days” → “14 days”) and in README/docs if needed.
+- Update copy in `TimelineSlider.tsx` and `page.tsx` (e.g. “30 days” (or “7 days” → “14 days”)) and in README/docs if needed.
 
 ## Chart X-Axis (One Label per Day)
 
