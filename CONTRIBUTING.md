@@ -27,9 +27,10 @@ npm run dev
 
 ## What to Update When Changing Behavior
 
-- **New or changed features**: Update [README](README.md) (e.g. Features, Project structure) if user-facing.
-- **Data or API shape**: Update [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) if relevant.
+- **New or changed features**: Update [README](README.md) (e.g. Features, Project structure, Mode Controller) if user-facing.
+- **Data or API shape**: Update [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (data flow, components) and [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) (types, patterns) if relevant.
 - **New env vars or config**: Document in README under Configuration.
+- **New research chart or marker**: Note in CODE_GUIDE and ARCHITECTURE file map.
 
 ## Questions
 

@@ -6,11 +6,11 @@ This folder contains detailed documentation for the Deep Ocean Environmental Das
 
 | Document | Description |
 |----------|-------------|
-| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design, data flow, component roles, and how the synced timeline works. |
-| **[CODE_GUIDE.md](CODE_GUIDE.md)** | Conventions, patterns, and how to add or change features (new charts, metrics, time range). |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | System design, **Real-Time vs Research mode** data flow, component roles, timeline sync, and file map. |
+| **[CODE_GUIDE.md](CODE_GUIDE.md)** | Conventions, patterns, and how to add or change features (new charts, metrics, research data, historical markers). |
 
 ## Quick Links
 
-- **Main README**: [../README.md](../README.md) — setup, scripts, project structure, configuration.
-- **App entry**: `src/app/page.tsx` — dashboard state and layout.
-- **Data layer**: `src/lib/mockData.ts` — time series, metrics, slider helpers.
+- **Main README**: [../README.md](../README.md) — setup, scripts, project structure, configuration, Mode Controller overview.
+- **App entry**: `src/app/page.tsx` — dashboard mode state, real-time vs research layout.
+- **Data**: `src/lib/mockData.ts` (30-day series), `src/lib/researchModeData.ts` (2000–2026 research series).

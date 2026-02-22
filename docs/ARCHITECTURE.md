@@ -2,89 +2,131 @@
 
 ## Overview
 
-The dashboard is a **single-page app** built with Next.js App Router. One **view date** drives all visualizations; the **timeline slider** is the single source of truth for “current moment” in the 30-day window.
+The dashboard is a **single-page app** built with Next.js App Router. It has two **modes**:
+
+1. **Real-Time Monitoring** — One **view date** drives all visualizations over a **30-day** window; the timeline slider is the single source of truth. Data is mock (or NOAA/USGS-style); Water Temp & Turbidity are labeled for **Galveston Station 8771450**.
+2. **Research History Mode** — A **view year** (2000–2026) drives research charts and historical markers. Data comes from **Dolphin Research Charts Data Analysis** (health tax, entanglement risk, mortality by year).
 
 ## High-Level Data Flow
 
+### Real-Time Mode
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Page (page.tsx)                                                 │
-│  • viewDate state                                                │
-│  • dataset = getMockTimeSeries() (30 days, 15-min points)         │
-│  • metrics = getMetricsAtTime(dataset, viewDate)                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Page (page.tsx)                                                          │
+│  • dashboardMode = "realtime"                                             │
+│  • viewDate state                                                         │
+│  • dataset = getMockTimeSeries() (30 days, 15-min points)                 │
+│  • metrics = getMetricsAtTime(dataset, viewDate)                           │
+│  • latestReading from useNoaaTemperature()                                │
+└─────────────────────────────────────────────────────────────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
-┌──────────────┐    ┌──────────────────┐    ┌─────────────────────┐
-│ MetricCards  │    │ DualAxisChart     │    │ BoatTrafficChart    │
-│ (metrics)    │    │ (data, viewDate) │    │ (data, viewDate)    │
-└──────────────┘    └──────────────────┘    └─────────────────────┘
-         │                    │                    │
-         └────────────────────┼────────────────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │ TimelineSlider     │
-                    │ value ↔ viewDate  │
-                    │ onChange → setViewDate
-                    └───────────────────┘
+┌──────────────┐    ┌──────────────────┐    ┌─────────────────────────────┐
+│ MetricCards  │    │ Charts            │    │ TimelineSlider              │
+│ (metrics,    │    │ (dailyDataset,    │    │ mode="realtime"             │
+│  stationLabel)│   │  debrisMortality, │    │ value ↔ viewDate (30 days)  │
+└──────────────┘    │  historical…)     │    └─────────────────────────────┘
+                    └──────────────────┘
 ```
 
-- **viewDate**: The single moment in time the dashboard is “showing.” All charts draw a vertical reference line at this time; metric cards show values interpolated at this time.
-- **Slider**: Maps [0, 1] to [30 days ago, now]. Moving the slider updates `viewDate`; nothing else owns “current time” for the UI.
-- **Sync**: Because every component receives the same `viewDate` (and same `data`), moving the slider once updates every chart and card to that same day/time.
+- **viewDate**: The moment in time the dashboard is “showing.” All real-time charts and metric cards use this.
+- **Slider**: In real-time mode, [0, 1] maps to [30 days ago, now]. Moving the slider updates `viewDate`.
+- **Record High alert**: When mortality risk from current temp ≥ 5.90% (2026 threshold), `RecordHighAlert` is shown.
+
+### Research Mode
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Page (page.tsx)                                                          │
+│  • dashboardMode = "research"                                             │
+│  • researchSliderValue ∈ [0, 1]                                           │
+│  • viewYear = 2000 + round(researchSliderValue * 26)                      │
+│  • researchData = getResearchYearSeries() (2000–2026)                     │
+└─────────────────────────────────────────────────────────────────────────┘
+         │                    │
+         ▼                    ▼
+┌────────────────────┐    ┌──────────────────────────────────────────────┐
+│ ResearchCharts      │    │ TimelineSlider                                │
+│ (Health Tax,        │    │ mode="research"                              │
+│  Entanglement,      │    │ value = researchSliderValue → viewYear       │
+│  Temp/Mortality)    │    └──────────────────────────────────────────────┘
+└────────────────────┘
+         │
+         ▼
+┌────────────────────┐
+│ HistoricalMarkers  │  When viewYear === 2013 → "The Exodus" popup
+└────────────────────┘
+```
+
+- **viewYear**: The selected year (2000–2026). Research charts and markers use this.
+- **Slider**: In research mode, [0, 1] maps to years 2000–2026; step is per year.
 
 ## Core Concepts
 
-### 1. Single Source of Truth: `viewDate`
+### 1. Mode: `dashboardMode`
 
-- Lived in **page.tsx** as `useState<Date | null>`.
-- Initialized to “now” when the app mounts and data is ready.
-- Updated by:
-  - **TimelineSlider** — user drags or clicks.
-  - **Back to Live** — resets to `new Date()`.
-  - **Live tick** — when not dragging, every 3s the view can advance by 3 minutes (optional “live” behavior).
+- Lived in **page.tsx** as `useState<DashboardMode>` (`"realtime"` | `"research"`).
+- **ModeController** at the top of the page toggles between the two; only one mode’s content is rendered.
+- Real-time mode shows: MetricCards, DebrisComposition, sync bar, HistoricalMortalityChart, TemperatureMortalityChart, BoatTrafficMortalityChart, DebrisMortalityChart, ScientistsInsight, TimelineSlider (30-day), LiveObservationLog.
+- Research mode shows: HistoricalMarkers, ResearchHealthTaxChart, ResearchEntanglementMortalityChart, ResearchTemperatureMortalityChart, TimelineSlider (year).
 
-### 2. Data Layer (`src/lib/mockData.ts`)
+### 2. Real-Time Data Layer (`src/lib/mockData.ts`)
 
-- **getMockTimeSeries()**: Returns a deterministic time series for the last `RANGE_DAYS` (7) at 15-minute intervals. Each point has: `time`, `temperature`, `dolphinMortality`, `boatTraffic`, `turbidity`, `debris`.
-- **getMetricsAtTime(dataset, viewDate)**: Interpolates or clamps to the nearest point and returns `{ boatTraffic, turbidity, waterTemp, marineDebris }` for the metric cards.
+- **getMockTimeSeries()**: Deterministic time series for the last `RANGE_DAYS` (30) at 15-minute intervals. Fields: `time`, `temperature`, `dolphinMortality`, `boatTraffic`, `turbidity`, `debris`.
+- **getMetricsAtTime(dataset, viewDate)**: Interpolates or clamps to the nearest point; returns `{ boatTraffic, turbidity, waterTemp, marineDebris }`.
 - **sliderValueToDate(value)** / **dateToSliderValue(date)**: Map between slider [0, 1] and a `Date` in the 30-day window.
+- **getDebrisMortalitySeries7Days()**, **getDailyAggregatedSeries()**: Used by Debris and Temp/Boat charts.
 
-Data is **mock** and deterministic (seeded by time) so the science-fair story (e.g. boat traffic ↔ dolphin mortality) is visible without a backend.
+### 3. Research Data Layer (`src/lib/researchModeData.ts`)
 
-### 3. Component Roles
+- **getResearchYearSeries()**: Returns `ResearchYearPoint[]` for years 2000–2026. Each point has: `year`, `temperatureF`, `survivalStrengthPct` (Health Tax: 100 − 2×(temp−85)), `entanglementDenominator` (50→5), `entanglementRiskPct`, `mortalityRiskPct`, `deathsMin`, `deathsMax`, `keyEvent`.
+- **MORTALITY_RISK_THRESHOLD_2026_PCT** (5.9): Used by Record High alert in real-time mode.
+
+### 4. Component Roles
 
 | Component | Responsibility |
 |-----------|----------------|
-| **page.tsx** | Holds `viewDate`, `dataset`, `metrics`; wires slider handlers and Back to Live; renders layout and sync banner. |
-| **MetricCards** | Displays current metrics (boat traffic, water quality card, marine debris). |
-| **DualAxisChart** | Temperature (left axis) + Dolphin mortality (right axis); reference line at `viewDate`. |
-| **BoatTrafficChart** | Boat traffic (left) + Dolphin mortality (right); reference line at `viewDate`. |
-| **TimelineSlider** | Range input [0, 1]; shows formatted `viewDate`; reports onChange/onDragEnd. |
-| **StatusIndicator** | LIVE vs HISTORICAL and the current viewing date. |
-| **UnderwaterBackground** | Full-viewport background image; fixed, non-interactive, behind content. |
+| **page.tsx** | Holds `dashboardMode`, `viewDate`, `viewYear`, `researchSliderValue`, datasets, metrics; wires ModeController, slider handlers, Back to Live; conditionally renders real-time vs research UI. |
+| **ModeController** | Toggle between Real-Time (Live pulse icon) and Research (Library icon). |
+| **MetricCards** | Displays metrics; optional `stationLabel` (e.g. Galveston Station 8771450). |
+| **TimelineSlider** | `mode` determines 30-day vs year range; shows `viewDate` or `viewYear`; reports onChange/onDragEnd. |
+| **StatusIndicator** | LIVE vs HISTORICAL and current viewing date (real-time only). |
+| **RecordHighAlert** | Shown when live mortality risk % ≥ 5.90% (real-time only). |
+| **HistoricalMarkers** | Shows popup when `viewYear` is 2013 (Research only). |
+| **ResearchCharts** | ResearchHealthTaxChart, ResearchEntanglementMortalityChart, ResearchTemperatureMortalityChart (year X-axis, dual-axis). |
+| **DashboardErrorBoundary** | Catches render errors; shows message and “Try again.” |
+| **UnderwaterBackground** | Full-viewport background; fixed, behind content. |
 
-### 4. Throttling and Slider UX
+### 5. Throttling and Slider UX
 
-- Slider updates at 15-min resolution in data; the UI throttles `viewDate` updates (e.g. ~40 ms) so dragging doesn’t flood state.
-- **timelineLiveValue** keeps the thumb position responsive while dragging; on release, `viewDate` is set from the final value so charts and cards stay in sync.
+- Real-time slider: `viewDate` updates are throttled (~40 ms) while dragging; **timelineLiveValue** keeps the thumb responsive; on release, `viewDate` is set from the final value.
+- Research slider: value maps directly to year; step = 1/(2026−2000).
+
+### 6. Loading and Errors
+
+- **Client-only mount**: `mounted` and `viewDate` are set in a `useEffect` (with `requestAnimationFrame`) so the dashboard only shows after hydration.
+- **Fallback**: If still “Loading…” after 2 seconds, state is forced so the main UI (or an error) can appear.
+- **DashboardErrorBoundary** (in layout): Catches render errors and displays the message and a “Try again” button.
 
 ## UI Layers (z-index)
 
 1. **z-0**: `UnderwaterBackground` (fixed, full viewport).
-2. **z-10**: Main content wrapper (cards, charts, slider).
-
-So the dolphin background sits behind all interactive content.
+2. **z-10**: Main content wrapper (ModeController, cards, charts, slider).
 
 ## File Map
 
 - **App**: `src/app/layout.tsx`, `page.tsx`, `globals.css`.
-- **Charts**: `src/components/DualAxisChart.tsx`, `BoatTrafficChart.tsx` (Recharts, one tick per day on X-axis).
-- **Data**: `src/lib/mockData.ts` (types, time series, metrics, slider↔date).
-- **Theme**: `tailwind.config.ts` (ocean colors), `globals.css` (glass-card, animations).
+- **Mode / UX**: `ModeController.tsx`, `TimelineSlider.tsx`, `StatusIndicator.tsx`, `DashboardErrorBoundary.tsx`, `RecordHighAlert.tsx`, `HistoricalMarkers.tsx`.
+- **Real-time charts**: `HistoricalMortalityChart.tsx`, `TemperatureMortalityChart.tsx`, `BoatTrafficMortalityChart.tsx`, `DebrisMortalityChart.tsx`.
+- **Research charts**: `ResearchCharts.tsx` (Health Tax, Entanglement, Temp/Mortality).
+- **Data**: `src/lib/mockData.ts`, `src/lib/historicalMortalityData.ts`, `src/lib/researchModeData.ts`.
+- **Theme**: `tailwind.config.ts`, `globals.css` (glass-card, status-pulse, etc.).
 
 ## Extending the System
 
-- **New metric**: Add field to `TimeSeriesPoint` and `MetricsAtTime`, update `getMockTimeSeries` and `getMetricsAtTime`, then add a card or axis in the right component.
-- **New chart**: New component that accepts `data: TimeSeriesPoint[]` and `viewDate: Date`; add to `page.tsx` and pass the same props; it will be synced automatically.
-- **Real API**: Replace `getMockTimeSeries()` with a fetch/API call; keep `getMetricsAtTime`, `sliderValueToDate`, and `dateToSliderValue` so the rest of the app stays unchanged.
+- **New real-time metric**: Add field to `TimeSeriesPoint` and `MetricsAtTime`, update `getMockTimeSeries` and `getMetricsAtTime`, then add a card or axis.
+- **New real-time chart**: Component that accepts `data` and (if needed) `viewDate`; add to the real-time branch in `page.tsx`.
+- **New research chart**: Component that accepts `data: ResearchYearPoint[]`; add to the research branch and use `researchData`.
+- **New historical marker**: In `HistoricalMarkers.tsx`, add another year/event and condition on `viewYear`.
+- **Real API**: Replace mock in `useNoaaTemperature` or `getMockTimeSeries()`; keep `getMetricsAtTime`, slider helpers, and mode logic so the rest of the app stays consistent.
