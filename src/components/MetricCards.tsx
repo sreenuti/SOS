@@ -2,6 +2,7 @@
 
 import type { MetricsAtTime } from "@/lib/mockData";
 import MetricCard from "./MetricCard";
+import DebrisHealthBadge from "./DebrisHealthBadge";
 
 // Simple SVG icons for each metric (inline to avoid asset setup)
 const BoatIcon = () => (
@@ -28,7 +29,7 @@ export default function MetricCards({ metrics }: MetricCardsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <MetricCard
-        title="Boat Traffic"
+        title="Nearby Vessels (within 500m)"
         value={metrics.boatTraffic}
         unit="vessels"
         icon={<BoatIcon />}
@@ -44,11 +45,22 @@ export default function MetricCards({ metrics }: MetricCardsProps) {
         </div>
         <div className="mt-2 space-y-1">
           <div className="flex items-baseline gap-2">
-            <span className="text-ocean-muted text-xs uppercase tracking-wider">Turbidity</span>
-            <span className="text-xl md:text-2xl font-semibold text-ocean-text tabular-nums">
+            <span
+              className="text-ocean-muted text-xs uppercase tracking-wider"
+              title="Natural background levels range from 10–60 NTU in Texas estuaries."
+            >
+              Turbidity
+            </span>
+            <span
+              className={`text-xl md:text-2xl font-semibold tabular-nums ${metrics.turbidity > 30 ? "text-amber-400" : "text-ocean-text"}`}
+              title="Natural background levels range from 10–60 NTU in Texas estuaries."
+            >
               {metrics.turbidity}
             </span>
             <span className="text-ocean-muted text-sm">NTU</span>
+            {metrics.turbidity > 30 && (
+              <span className="text-amber-400 text-xs font-medium uppercase tracking-wider">Caution</span>
+            )}
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-ocean-muted text-xs uppercase tracking-wider">Temperature</span>
@@ -59,12 +71,23 @@ export default function MetricCards({ metrics }: MetricCardsProps) {
           </div>
         </div>
       </div>
-      <MetricCard
-        title="Marine Debris"
-        value={metrics.marineDebris}
-        unit="count"
-        icon={<DebrisIcon />}
-      />
+      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
+        <div className="flex items-center justify-between">
+          <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+            Debris Density
+          </span>
+          <span className="text-ocean-cyan/80 w-8 h-8 flex items-center justify-center">
+            <DebrisIcon />
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <span className="text-2xl md:text-3xl font-semibold text-ocean-text tabular-nums">
+            {metrics.marineDebris}
+          </span>
+          <span className="text-ocean-muted text-sm font-normal">items/km²</span>
+          <DebrisHealthBadge density={metrics.marineDebris} />
+        </div>
+      </div>
     </div>
   );
 }

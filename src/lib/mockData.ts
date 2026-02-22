@@ -46,12 +46,13 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
     const tempNoise = (seeded(t * 0.001) - 0.5) * 1.5;
     const temperature = Math.round((tempBase + tempCycle + tempNoise) * 10) / 10;
 
-    // Boat traffic 0–50 (higher on weekends and midday)
+    // Boat traffic: nearby vessels within 500m, realistic range 2–15 (Texas ship channel)
     const dayOfWeek = new Date(t).getDay();
     const weekend = dayOfWeek === 0 || dayOfWeek === 6 ? 1.4 : 1;
     const boatMidday = 20 * Math.exp(-Math.pow((hour - 0.5) * 8, 2));
     const boatNoise = seeded(t * 0.003) * 8;
-    const boatTraffic = Math.max(0, Math.min(50, Math.round(weekend * (5 + boatMidday + boatNoise))));
+    const rawBoat = weekend * (5 + boatMidday + boatNoise);
+    const boatTraffic = Math.max(2, Math.min(15, Math.round(2 + (13 * Math.min(rawBoat, 30) / 30))));
 
     // Dolphin mortality 0–20: correlates with boat traffic (higher traffic → more mortality) plus baseline and noise
     const mortalityFromTraffic = (boatTraffic / 50) * 12;
@@ -59,15 +60,15 @@ export function getMockTimeSeries(): TimeSeriesPoint[] {
     const mortalityNoise = (seeded(t * 0.007) - 0.5) * 3;
     const dolphinMortality = Math.max(0, Math.min(20, Math.round(mortalityBase + mortalityFromTraffic + mortalityNoise)));
 
-    // Turbidity (NTU-like) 0.5–8 with some spikes
-    const turbBase = 2 + 1.5 * Math.sin(dayFrac * 0.15);
-    const turbSpike = seeded(t * 0.004) > 0.97 ? 4 : 0;
-    const turbidity = Math.round((turbBase + turbSpike + (seeded(t * 0.005) - 0.5) * 0.5) * 10) / 10;
+    // Turbidity (NTU): Texas estuary range 10–60; natural background 10–60, >30 often exceeds standards
+    const turbBase = 12.5 + 23 * Math.sin(dayFrac * 0.15);
+    const turbSpike = seeded(t * 0.004) > 0.97 ? 18 : 0;
+    const turbidity = Math.round(Math.max(10, Math.min(60, turbBase + turbSpike + (seeded(t * 0.005) - 0.5) * 3)) * 10) / 10;
 
-    // Marine debris 0–25 count
-    const debrisBase = 5 + 5 * Math.sin(dayFrac * 0.12);
-    const debrisNoise = (seeded(t * 0.006) - 0.5) * 4;
-    const debris = Math.max(0, Math.min(25, Math.round(debrisBase + debrisNoise)));
+    // Marine debris density 50–500 items/km² (realistic coastal pollution)
+    const debrisBase = 150 + 150 * Math.sin(dayFrac * 0.12);
+    const debrisNoise = (seeded(t * 0.006) - 0.5) * 80;
+    const debris = Math.max(50, Math.min(500, Math.round(debrisBase + debrisNoise)));
 
     points.push({
       time: t,
@@ -90,7 +91,7 @@ export function getMetricsAtTime(
 ): MetricsAtTime {
   const ts = viewDate.getTime();
   if (dataset.length === 0) {
-    return { boatTraffic: 0, turbidity: 0, waterTemp: 0, marineDebris: 0 };
+    return { boatTraffic: 0, turbidity: 0, waterTemp: 0, marineDebris: 0 }; // 0 = no data
   }
   if (ts <= dataset[0].time) {
     const p = dataset[0];

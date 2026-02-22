@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import UnderwaterBackground from "@/components/UnderwaterBackground";
+import { MarineDebrisProvider } from "@/context/MarineDebrisContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,8 +24,10 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans antialiased bg-ocean-bg text-ocean-text min-h-screen relative`}
       >
-        <UnderwaterBackground />
-        <div className="relative z-10">{children}</div>
+        <MarineDebrisProvider>
+          <UnderwaterBackground />
+          <div className="relative z-10">{children}</div>
+        </MarineDebrisProvider>
       </body>
     </html>
   );

@@ -53,7 +53,7 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Boat Traffic & Dolphin Mortality
+        Nearby Vessels (within 500m) & Dolphin Mortality
       </h3>
       <ResponsiveContainer width="100%" height={260}>
         <LineChart
@@ -82,7 +82,7 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
             stroke="#f59e0b"
             tick={{ fill: "#94a3b8", fontSize: 11 }}
             tickFormatter={(v) => `${v}`}
-            domain={[0, "dataMax + 5"]}
+            domain={[2, 15]}
           />
           <YAxis
             yAxisId="mortality"
@@ -101,7 +101,7 @@ export default function BoatTrafficChart({ data, viewDate }: BoatTrafficChartPro
             labelFormatter={(ts) => formatTime(Number(ts))}
             formatter={(value: number, name: string) => [
               name === "boatTraffic" ? `${value} vessels` : value,
-              name === "boatTraffic" ? "Boat Traffic" : "Dolphin Mortality",
+              name === "boatTraffic" ? "Nearby Vessels (within 500m)" : "Dolphin Mortality",
             ]}
           />
           <ReferenceLine
