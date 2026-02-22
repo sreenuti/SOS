@@ -12,6 +12,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
+import { getHealthTaxReductionPct } from "@/lib/survivalScore";
 
 interface DualAxisChartProps {
   data: TimeSeriesPoint[];
@@ -60,7 +61,7 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
   const xAxisTicks = getDayTicks(data);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Water Temperature & Dolphin Mortality
       </h3>
@@ -107,6 +108,12 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
               if (!active || !payload?.length) return null;
               const temp = payload.find((p) => p.dataKey === "temperature");
               const mort = payload.find((p) => p.dataKey === "dolphinMortality");
+              const tempF = temp != null ? Number(temp.value) : 0;
+              const healthTaxPct = getHealthTaxReductionPct(tempF);
+              const scientificContext =
+                healthTaxPct > 0
+                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above 85°F reduces by 2%)`
+                  : "No thermal health tax (below 85°F baseline)";
               return (
                 <div
                   className="rounded-lg border px-3 py-2 shadow-lg"
@@ -120,6 +127,9 @@ export default function DualAxisChart({ data, viewDate }: DualAxisChartProps) {
                   <p className="font-medium text-cyan-200/90 mb-1">{typeof label === "number" ? formatTime(label) : label}</p>
                   {temp != null && <p>Temperature: {temp.value} °F</p>}
                   {mort != null && <p>Dolphin Mortality: {mort.value}</p>}
+                  <p className="mt-1.5 pt-1.5 border-t border-ocean-border/50 text-amber-200/90 text-[11px]">
+                    Scientific context: {scientificContext}
+                  </p>
                 </div>
               );
             }}

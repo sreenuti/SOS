@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
+import { getHealthTaxReductionPct } from "@/lib/survivalScore";
 
 const TEMP_COLOR = "#06b6d4";
 const CORAL_RED = "#f08080";
@@ -37,7 +38,7 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
   const chartData = useMemo(() => applyRollingAverage(data), [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Water Temperature & Dolphin Mortality (30 days)
       </h3>
@@ -56,7 +57,6 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
             stroke={TEMP_COLOR}
             tick={{ fill: "#94a3b8", fontSize: 11 }}
             tickFormatter={(v) => `${v}`}
-            label={{ value: "°F", angle: -90, position: "insideLeft", fill: "#94a3b8", fontSize: 10 }}
           />
           <YAxis
             yAxisId="mortality"
@@ -75,6 +75,12 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
             content={({ active, payload, label }) => {
               if (!active || !payload?.length || !label) return null;
               const p = payload[0].payload as TimeSeriesPoint & { mortality7dAvg?: number };
+              const temp = p.temperature;
+              const healthTaxPct = getHealthTaxReductionPct(temp);
+              const scientificContext =
+                healthTaxPct > 0
+                  ? `−${healthTaxPct}% Survival Strength (Health Tax: every 1°F above 85°F reduces by 2%)`
+                  : "No thermal health tax (below 85°F baseline)";
               return (
                 <div
                   className="rounded-lg border px-3 py-2 text-left shadow-lg"
@@ -86,9 +92,12 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
                   }}
                 >
                   <p className="font-medium text-ocean-cyan/90 mb-1">{label}</p>
-                  <p>Water Temperature: {p.temperature} °F</p>
+                  <p>Water Temperature: {temp} °F</p>
                   <p>Dolphin Mortality (raw): {p.dolphinMortality}</p>
                   <p>Dolphin Mortality (7-day avg): {p.mortality7dAvg ?? p.dolphinMortality}</p>
+                  <p className="mt-1.5 pt-1.5 border-t border-ocean-border/50 text-amber-200/90 text-[11px]">
+                    Scientific context: {scientificContext}
+                  </p>
                 </div>
               );
             }}

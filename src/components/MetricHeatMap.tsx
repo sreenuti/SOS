@@ -92,7 +92,7 @@ export default function MetricHeatMap({
 
   if (!data.length) {
     return (
-      <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[220px] w-full">
+      <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[220px] w-full">
         <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">{title}</h3>
         <p className="text-ocean-muted text-sm">No data</p>
       </div>
@@ -108,7 +108,7 @@ export default function MetricHeatMap({
     interpolateColor(rowB.lowColor, rowB.highColor, (v - scaleB.min) / rangeB);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">{title}</h3>
       <div className="overflow-x-auto">
         <div className="min-w-[400px]">

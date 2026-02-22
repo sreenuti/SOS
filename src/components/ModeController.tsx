@@ -41,7 +41,7 @@ function LibraryIcon({ className }: { className?: string }) {
 export default function ModeController({ mode, onModeChange }: ModeControllerProps) {
   return (
     <div
-      className="rounded-xl border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-lg p-1.5 flex items-center gap-0"
+      className="rounded-xl border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-lg p-1.5 flex items-center gap-0"
       role="group"
       aria-label="Dashboard mode"
     >

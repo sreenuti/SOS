@@ -31,7 +31,7 @@ export function ResearchHealthTaxChart({ data }: { data: ResearchYearPoint[] }) 
   const chartData = useMemo(() => [...data], [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Health Tax — Survival Strength vs Temperature (2000–2026)
       </h3>
@@ -110,7 +110,7 @@ export function ResearchEntanglementMortalityChart({ data }: { data: ResearchYea
   const chartData = useMemo(() => data.map((p) => ({ ...p, riskLabel: `1 in ${p.entanglementDenominator}` })), [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Entanglement Risk & Mortality (2000–2026)
       </h3>
@@ -190,7 +190,7 @@ export function ResearchTemperatureMortalityChart({ data }: { data: ResearchYear
   const chartData = useMemo(() => [...data], [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Temperature vs Dolphin Mortality (2000–2026)
       </h3>

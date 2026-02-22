@@ -2,9 +2,10 @@
 
 import type { MetricsAtTime } from "@/lib/mockData";
 import { getSurvivalScore, THERMAL_STRESS_TEMP_THRESHOLD_F } from "@/lib/survivalScore";
-import MetricCard from "./MetricCard";
+import { BASELINE_TEMP_2000_2003_F } from "@/lib/baselines";
 import DebrisHealthBadge from "./DebrisHealthBadge";
 import VesselDensity from "./VesselDensity";
+import DeltaDisplay from "./DeltaDisplay";
 
 // Simple SVG icons for each metric (inline to avoid asset setup)
 const WaterTempIcon = () => (
@@ -43,7 +44,7 @@ export default function MetricCards({ metrics, isLive = false, stationLabel }: M
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <VesselDensity count={metrics.boatTraffic} isLive={isLive} />
-      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
+      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
             Water Quality & Temperature
@@ -52,14 +53,8 @@ export default function MetricCards({ metrics, isLive = false, stationLabel }: M
             <WaterTempIcon />
           </span>
         </div>
-        <div className="mt-2 space-y-1">
-          <div className="flex items-baseline gap-2">
-            <span
-              className="text-ocean-muted text-xs uppercase tracking-wider"
-              title="Natural background levels range from 10–60 NTU in Texas estuaries."
-            >
-              Turbidity
-            </span>
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap items-baseline gap-2">
             <span
               className={`text-xl md:text-2xl font-semibold tabular-nums ${metrics.turbidity > 30 ? "text-amber-400" : "text-ocean-text"}`}
               title="Natural background levels range from 10–60 NTU in Texas estuaries."
@@ -68,19 +63,25 @@ export default function MetricCards({ metrics, isLive = false, stationLabel }: M
             </span>
             <span className="text-ocean-muted text-sm">NTU</span>
             {metrics.turbidity > 30 && (
-              <span className="text-amber-400 text-xs font-medium uppercase tracking-wider">Caution</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-semibold uppercase tracking-wider bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-hidden />
+                Caution
+              </span>
             )}
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-ocean-muted text-xs uppercase tracking-wider">Temperature</span>
-            <span className="text-xl md:text-2xl font-semibold text-ocean-text tabular-nums">
-              {metrics.waterTemp}
-            </span>
-            <span className="text-ocean-muted text-sm">°F</span>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <DeltaDisplay
+              current={metrics.waterTemp}
+              baseline={BASELINE_TEMP_2000_2003_F}
+              unit="°F"
+              kind="temperature"
+              formatCurrent={(n) => String(n)}
+              formatDelta={(d) => (d > 0 ? `+${d}` : String(d))}
+            />
           </div>
         </div>
       </div>
-      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
+      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
             Marine Debris
@@ -89,24 +90,15 @@ export default function MetricCards({ metrics, isLive = false, stationLabel }: M
             <DebrisIcon />
           </span>
         </div>
-        <div className="mt-2 space-y-2">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-2xl md:text-3xl font-semibold text-ocean-text tabular-nums">
-              {metrics.marineDebris}
-            </span>
-            <span className="text-ocean-muted text-sm font-normal">items/km²</span>
-            <DebrisHealthBadge density={metrics.marineDebris} />
-          </div>
-          <div className="flex flex-wrap items-baseline gap-2 pt-1 border-t border-ocean-border/40">
-            <span className="text-ocean-muted text-xs uppercase tracking-wider">Entanglement Probability</span>
-            <span className="text-lg font-semibold text-amber-200/95 tabular-nums" title="At ~687 MT projected debris, research shows 1 in 5 sightings show entanglement risk.">
-              1 in 5 sightings
-            </span>
-            <span className="text-ocean-muted text-[10px]">(at ~687 MT projected)</span>
-          </div>
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <span className="text-2xl md:text-3xl font-semibold text-ocean-text tabular-nums">
+            {metrics.marineDebris}
+          </span>
+          <span className="text-ocean-muted text-sm font-normal">items/km²</span>
+          <DebrisHealthBadge density={metrics.marineDebris} />
         </div>
       </div>
-      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
+      <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
             Survival Score
@@ -125,6 +117,19 @@ export default function MetricCards({ metrics, isLive = false, stationLabel }: M
             {survivalScore}
           </span>
           <span className="text-ocean-muted text-sm font-normal">%</span>
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-semibold uppercase tracking-wider ring-1 ${
+              survivalScore < 94
+                ? "bg-amber-500/20 text-amber-400 ring-amber-500/50"
+                : "bg-emerald-500/20 text-emerald-400 ring-emerald-500/50"
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${survivalScore < 94 ? "bg-amber-400" : "bg-emerald-400"}`}
+              aria-hidden
+            />
+            {survivalScore < 94 ? "Caution" : "Healthy"}
+          </span>
         </div>
         {showThermalAlert && (
           <p className="mt-3 text-amber-400 text-sm font-medium" role="alert">

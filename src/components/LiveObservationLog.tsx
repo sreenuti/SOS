@@ -16,7 +16,7 @@ export default function LiveObservationLog({ entries }: LiveObservationLogProps)
   }, [entries.length]);
 
   return (
-    <div className="glass-card border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl flex flex-col h-full min-h-0">
+    <div className="glass-card border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl flex flex-col h-full min-h-0">
       <h2 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider p-4 pb-2 flex-shrink-0 border-b border-ocean-border/40">
         Live Observation Log
       </h2>

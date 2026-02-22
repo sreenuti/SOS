@@ -11,7 +11,7 @@ export default function ScientistsInsight({ metrics }: ScientistsInsightProps) {
   const insight = generateScientistsInsight(metrics);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl">
       <div className="flex items-start gap-3">
         <span
           className="text-ocean-cyan/90 w-8 h-8 flex-shrink-0 flex items-center justify-center"

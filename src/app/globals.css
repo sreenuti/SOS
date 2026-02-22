@@ -5,7 +5,7 @@
 :root {
   --ocean-bg: #0a1628;
   --ocean-surface: #0d2137;
-  --ocean-card: rgba(15, 50, 80, 0.6);
+  --ocean-card: rgba(15, 50, 80, 0.55);
   --ocean-border: rgba(45, 212, 191, 0.25);
   --ocean-teal: #0d9488;
   --ocean-teal-light: #14b8a6;
@@ -22,7 +22,7 @@ body {
 
 /* Glass card utility - lower opacity so background shows through */
 .glass-card {
-  @apply rounded-xl border border-ocean-border bg-ocean-card/45 backdrop-blur-sm shadow-lg;
+  @apply rounded-xl border border-ocean-border bg-ocean-card/40 backdrop-blur-sm shadow-lg;
 }
 
 /* Timeline range slider - thumb */

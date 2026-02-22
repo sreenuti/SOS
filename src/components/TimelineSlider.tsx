@@ -59,7 +59,7 @@ export default function TimelineSlider({
       : "Historical Timeline (30 days)";
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
           {title}

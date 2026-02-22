@@ -6,13 +6,13 @@
  */
 const COMPOSITION = [
   { label: "Single-use Plastics (Bottles, straws)", percent: 60, color: "bg-amber-500/80" },
-  { label: "Fishing Gear (Nets, lines—deadly for dolphins)", percent: 25, color: "bg-slate-500/80" },
+  { label: "Fishing Gear (Nets, lines—deadly for dolphins)", percent: 25, color: "bg-rose-500/90" },
   { label: "Microplastics / Other", percent: 15, color: "bg-sky-600/80" },
 ] as const;
 
 export default function DebrisComposition() {
   return (
-    <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/45 backdrop-blur-sm shadow-xl">
+    <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl">
       <div className="flex items-center justify-between mb-4">
         <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
           Debris Composition

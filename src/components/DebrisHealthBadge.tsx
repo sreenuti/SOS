@@ -22,10 +22,10 @@ export default function DebrisHealthBadge({ density }: DebrisHealthBadgeProps) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ring-1 ${style.bg} ${style.text} ${style.ring}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-semibold uppercase tracking-wider ring-1 ${style.bg} ${style.text} ${style.ring}`}
       title={`0–100: Healthy · 101–300: Caution · >300: Critical. Current: ${density} items/km²`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-current opacity-80`} aria-hidden />
+      <span className="w-2 h-2 rounded-full shrink-0 bg-current opacity-90" aria-hidden />
       {label}
     </span>
   );

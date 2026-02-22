@@ -9,3 +9,9 @@ export function getSurvivalScore(currentTempF: number): number {
 
 export const THERMAL_STRESS_TEMP_THRESHOLD_F = 88;
 export const THERMAL_STRESS_SURVIVAL_THRESHOLD = 94;
+
+/** Health Tax: every 1°F above 85°F reduces survival strength by 2%. Returns the reduction % for tooltips. */
+export function getHealthTaxReductionPct(tempF: number): number {
+  if (tempF < 85) return 0;
+  return Math.round(2 * (tempF - 85) * 10) / 10;
+}

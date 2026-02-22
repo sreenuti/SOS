@@ -47,7 +47,7 @@ export default function DebrisMortalityChart({ data }: DebrisMortalityChartProps
   const chartData = useMemo(() => applyRollingAverage(data), [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[320px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Marine Debris Density & Dolphin Mortality (30 days)
       </h3>
@@ -68,7 +68,6 @@ export default function DebrisMortalityChart({ data }: DebrisMortalityChartProps
             stroke={LIGHT_BLUE}
             tick={{ fill: "#94a3b8", fontSize: 11 }}
             tickFormatter={(v) => `${v}`}
-            label={{ value: "items/km²", angle: -90, position: "insideLeft", fill: "#94a3b8", fontSize: 10 }}
           />
           <YAxis
             yAxisId="mortality"

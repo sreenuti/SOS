@@ -72,7 +72,7 @@ export default function HistoricalMortalityChart({
   const chartData = useMemo(() => [...data], [data]);
 
   return (
-    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/35 backdrop-blur-sm h-[360px] w-full">
+    <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[360px] w-full">
       <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
         Bahama Dolphin Mortality — Historical (Water Temperature °F)
       </h3>
