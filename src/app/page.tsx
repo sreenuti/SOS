@@ -23,18 +23,10 @@ export default function DashboardPage() {
   const [sliderDragging, setSliderDragging] = useState(false);
 
   const dataset = useMemo(() => (mounted ? getMockTimeSeries() : []), [mounted]);
-  const maxTimeIndex = Math.max(0, dataset.length - 1);
-  const [timeIndex, setTimeIndex] = useState(0);
   const [timelineLiveValue, setTimelineLiveValue] = useState(0);
-  const [chartRangeDragging, setChartRangeDragging] = useState(false);
-  const [chartRangeLiveValue, setChartRangeLiveValue] = useState(0);
   const timelineThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const chartRangeThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTimelineUpdate = useRef(0);
-  const lastChartRangeUpdate = useRef(0);
   const pendingTimeline = useRef<number | null>(null);
-  const pendingChartRange = useRef<number | null>(null);
-  const chartRangeLatestRef = useRef(0);
 
   useEffect(() => {
     setMounted(true);
@@ -42,15 +34,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!mounted || dataset.length === 0) return;
-    const now = new Date();
-    setViewDate(now);
-    setTimeIndex(dataset.length - 1);
+    setViewDate(new Date());
   }, [mounted, dataset.length]);
-
-  const chartData = useMemo(
-    () => dataset.slice(0, timeIndex + 1),
-    [dataset, timeIndex]
-  );
 
   const metrics = useMemo(
     () =>
@@ -97,41 +82,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleChartRangeChange = useCallback((value: number) => {
-    chartRangeLatestRef.current = value;
-    setChartRangeLiveValue(value);
-    const now = Date.now();
-    if (now - lastChartRangeUpdate.current >= SLIDER_THROTTLE_MS) {
-      lastChartRangeUpdate.current = now;
-      setTimeIndex(value);
-      pendingChartRange.current = null;
-    } else {
-      pendingChartRange.current = value;
-      if (chartRangeThrottleRef.current === null) {
-        chartRangeThrottleRef.current = setTimeout(() => {
-          chartRangeThrottleRef.current = null;
-          if (pendingChartRange.current !== null) {
-            const v = pendingChartRange.current;
-            pendingChartRange.current = null;
-            lastChartRangeUpdate.current = Date.now();
-            setTimeIndex(v);
-          }
-        }, SLIDER_THROTTLE_MS);
-      }
-    }
-  }, []);
-
-  const handleChartRangeDragEnd = useCallback((value: number) => {
-    setTimeIndex(value);
-    pendingChartRange.current = null;
-    if (chartRangeThrottleRef.current !== null) {
-      clearTimeout(chartRangeThrottleRef.current);
-      chartRangeThrottleRef.current = null;
-    }
-  }, []);
-
-  const isRealtime = timeIndex === maxTimeIndex;
-
   /** LIVE when viewing "now" (within 2 min); HISTORICAL when scrubbing the past */
   const isLive = useMemo(() => {
     if (!viewDate) return false;
@@ -147,9 +97,9 @@ export default function DashboardPage() {
     }
   }, [sliderDragging, viewDate]);
 
-  // Live advance every 3s only when timeline not being dragged AND chart range at max (real-time)
+  // Live advance every 3s when timeline not being dragged
   useEffect(() => {
-    if (!viewDate || sliderDragging || !isRealtime) return;
+    if (!viewDate || sliderDragging) return;
     const id = setInterval(() => {
       setViewDate((prev) => {
         if (!prev) return prev;
@@ -159,7 +109,7 @@ export default function DashboardPage() {
       });
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [viewDate, sliderDragging, isRealtime]);
+  }, [viewDate, sliderDragging]);
 
   if (!mounted || !viewDate) {
     return (
@@ -198,7 +148,7 @@ export default function DashboardPage() {
       <section className="space-y-6">
         <MetricCards metrics={metrics} />
 
-        <DualAxisChart data={chartData} viewDate={viewDate} />
+        <DualAxisChart data={dataset} viewDate={viewDate} />
 
         <TimelineSlider
           value={sliderDragging ? timelineLiveValue : sliderValue}
@@ -207,51 +157,6 @@ export default function DashboardPage() {
           viewDate={viewDate}
           onSliderDrag={setSliderDragging}
         />
-
-        <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/80 backdrop-blur-md w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-            <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
-              Chart range (data from start to time index)
-            </span>
-            <span className="text-ocean-cyan text-sm font-mono tabular-nums">
-              {timeIndex + 1} / {dataset.length}
-              {isRealtime && " · Real-time"}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={maxTimeIndex}
-            step={1}
-            value={chartRangeDragging ? chartRangeLiveValue : timeIndex}
-            onChange={(e) => {
-              const v = parseInt(e.target.value, 10);
-              handleChartRangeChange(v);
-            }}
-            onMouseDown={() => {
-              setChartRangeDragging(true);
-              setChartRangeLiveValue(timeIndex);
-            }}
-            onMouseUp={() => {
-              setChartRangeDragging(false);
-              handleChartRangeDragEnd(chartRangeLatestRef.current);
-            }}
-            onTouchStart={() => {
-              setChartRangeDragging(true);
-              setChartRangeLiveValue(timeIndex);
-              chartRangeLatestRef.current = timeIndex;
-            }}
-            onTouchEnd={() => {
-              setChartRangeDragging(false);
-              handleChartRangeDragEnd(chartRangeLatestRef.current);
-            }}
-            aria-label="Chart display range from start to time index"
-            className="w-full h-2 rounded-lg cursor-pointer border border-ocean-border/50 focus:outline-none focus:ring-2 focus:ring-ocean-cyan/50"
-            style={{
-              background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${maxTimeIndex ? ((chartRangeDragging ? chartRangeLiveValue : timeIndex) / maxTimeIndex) * 100 : 0}%, #0d2137 ${maxTimeIndex ? ((chartRangeDragging ? chartRangeLiveValue : timeIndex) / maxTimeIndex) * 100 : 0}%, #0d2137 100%)`,
-            }}
-          />
-        </div>
       </section>
     </main>
   );
