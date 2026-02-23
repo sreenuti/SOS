@@ -52,7 +52,9 @@ import {
 } from "@/lib/fetchLiveOceanData";
 import { useStation } from "@/context/StationContext";
 import type { TimeSeriesPoint } from "@/lib/mockData";
-import CoastMap from "@/components/CoastMap";
+import dynamic from "next/dynamic";
+
+const CoastMap = dynamic(() => import("@/components/CoastMap"), { ssr: false });
 
 const RESEARCH_YEAR_MIN = 2000;
 const RESEARCH_YEAR_MAX = 2026;
@@ -123,21 +125,18 @@ export default function DashboardPage() {
   const [logEntries, setLogEntries] = useState<ObservationLogEntry[]>([]);
   const prevMetricsRef = useRef<MetricsAtTime | null>(null);
 
-  // Client-only mount: ensures we're past hydration so state updates don't get stuck
+  // Client-only mount: useEffect runs after hydration; set mounted so dashboard and charts render
   useEffect(() => {
-    const t = requestAnimationFrame(() => {
-      setMounted(true);
-      setViewDate(new Date());
-    });
-    return () => cancelAnimationFrame(t);
+    setMounted(true);
+    setViewDate(new Date());
   }, []);
 
-  // Fallback: if still loading after 2s (e.g. effect blocked), force show dashboard so errors surface
+  // Fallback: if still loading after 1.5s (e.g. effect delayed), force show dashboard
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setMounted((m) => m || true);
       setViewDate((d) => d || new Date());
-    }, 2000);
+    }, 1500);
     return () => clearTimeout(timeoutId);
   }, []);
 

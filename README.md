@@ -148,6 +148,7 @@ Create `.env.local` (or set in Vercel) for production:
 | `NEXT_PUBLIC_NOAA_STATION_ID` | Default station ID when app loads | `8771450` (Galveston) |
 | `NEXT_PUBLIC_NOAA_API_URL` | NOAA CO-OPS datagetter base URL | `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` |
 | `NEXT_PUBLIC_HISTORICAL_BASELINE_TEMP` | Fallback Health Tax baseline °F when station has none | `85.2` |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps API key for the National SOS Marine Network map (station pins) | — |
 
 Stations and regional baselines are defined in `src/lib/noaaStations.ts` (Santa Monica, Galveston, Key West, Charleston, Woods Hole).
 
