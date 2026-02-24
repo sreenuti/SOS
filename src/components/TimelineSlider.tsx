@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { DashboardMode } from "./ModeController";
+import InfoIcon from "./InfoIcon";
 
 interface TimelineSliderProps {
   mode: DashboardMode;
@@ -61,8 +62,14 @@ export default function TimelineSlider({
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+        <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider flex items-center gap-2">
           {title}
+          <InfoIcon
+            ariaLabel="About timeline"
+            content={mode === "research"
+              ? "Scrub to any year between 2000 and 2026 to see research charts and historical markers for that year. Regional projections use the selected station."
+              : "Scrub to any moment in the last 30 days. All metrics and charts update to that time. Syncs with live NOAA/USGS data when viewing near the current time."}
+          />
         </span>
         <span className="text-ocean-cyan text-sm font-mono tabular-nums">
           {label}

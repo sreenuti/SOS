@@ -45,12 +45,20 @@ import {
 import LiveObservationLog from "@/components/LiveObservationLog";
 import ScientificSummaryCard from "@/components/ScientificSummaryCard";
 import DashboardLoadingWidget from "@/components/DashboardLoadingWidget";
+import InfoIcon from "@/components/InfoIcon";
 import {
   fetchLiveOceanData,
   chartDataTimeMs,
   type ChartData,
 } from "@/lib/fetchLiveOceanData";
+import {
+  fetchLiveTurbidity,
+  turbidityTimeMs,
+  LIVE_TURBIDITY_MATCH_MS,
+} from "@/lib/fetchLiveTurbidity";
+import { fetchLiveBoatTraffic } from "@/lib/fetchLiveBoatTraffic";
 import { useStation } from "@/context/StationContext";
+import { getStationById } from "@/lib/noaaStations";
 import type { TimeSeriesPoint } from "@/lib/mockData";
 import dynamic from "next/dynamic";
 
@@ -65,6 +73,7 @@ const TICK_MS = 3000; // live update every 3 seconds
 const ADVANCE_MS = 3 * 60 * 1000; // advance view by 3 minutes each tick
 const LIVE_OCEAN_POLL_MS = 10 * 60 * 1000; // real-time NOAA refresh every 10 minutes
 const LIVE_TEMP_MATCH_MS = 15 * 60 * 1000; // use live temp if within 15 min of point
+const LIVE_BOAT_WINDOW_MS = 15 * 60 * 1000; // use live vessel count for points within 15 min of fetch time
 
 export default function DashboardPage() {
   const { selectedStationId, selectedStation } = useStation();
@@ -84,33 +93,67 @@ export default function DashboardPage() {
   const lastLiveOceanFetchAtRef = useRef<number>(0);
   liveOceanDataRef.current = liveOceanData;
 
-  /** Merged series (mock + live NOAA temps) and daily aggregated series in one pass to avoid TDZ. */
+  /** Live turbidity from USGS (per-station site mapping); marine debris stays mock. */
+  const [liveTurbidityData, setLiveTurbidityData] = useState<Array<{ timestamp: string; turbidity: number }>>([]);
+  const liveTurbidityRef = useRef<Array<{ timestamp: string; turbidity: number }>>([]);
+  liveTurbidityRef.current = liveTurbidityData;
+
+  /** Live vessel count from AIS when env configured; else mock. Applied to points within 15 min of fetch time. */
+  const [liveBoatTraffic, setLiveBoatTraffic] = useState<{ count: number; fetchedAt: number } | null>(null);
+
+  /** Merged series: real temp + real turbidity + real boat traffic (when available); marine debris always from mock. */
   const { mergedDataset, dailyDataset } = useMemo(() => {
     const base = dataset;
     if (!mounted || !base.length) {
       return { mergedDataset: base, dailyDataset: getDailyAggregatedSeries(base) };
     }
-    if (!liveOceanData.length) {
-      return { mergedDataset: base, dailyDataset: getDailyAggregatedSeries(base) };
-    }
     const merged: TimeSeriesPoint[] = base.map((p) => {
-      let bestTemp: number | null = null;
-      let bestDiff = Infinity;
-      for (const live of liveOceanData) {
-        const liveMs = chartDataTimeMs(live);
-        const diff = Math.abs(p.time - liveMs);
-        if (diff < bestDiff && diff <= LIVE_TEMP_MATCH_MS) {
-          bestDiff = diff;
-          bestTemp = live.temperature;
+      let temperature = p.temperature;
+      let turbidity = p.turbidity;
+      let boatTraffic = p.boatTraffic;
+      // real temp
+      if (liveOceanData.length > 0) {
+        let bestTemp: number | null = null;
+        let bestDiff = Infinity;
+        for (const live of liveOceanData) {
+          const liveMs = chartDataTimeMs(live);
+          const diff = Math.abs(p.time - liveMs);
+          if (diff < bestDiff && diff <= LIVE_TEMP_MATCH_MS) {
+            bestDiff = diff;
+            bestTemp = live.temperature;
+          }
+        }
+        if (bestTemp !== null) temperature = bestTemp;
+      }
+      // real turbidity (USGS)
+      if (liveTurbidityData.length > 0) {
+        let bestTurb: number | null = null;
+        let bestDiff = Infinity;
+        for (const live of liveTurbidityData) {
+          const liveMs = turbidityTimeMs(live);
+          const diff = Math.abs(p.time - liveMs);
+          if (diff < bestDiff && diff <= LIVE_TURBIDITY_MATCH_MS) {
+            bestDiff = diff;
+            bestTurb = live.turbidity;
+          }
+        }
+        if (bestTurb !== null) turbidity = bestTurb;
+      }
+      // real boat traffic (AIS): use for points within window of fetch time
+      if (liveBoatTraffic !== null) {
+        const { count, fetchedAt } = liveBoatTraffic;
+        if (p.time >= fetchedAt - LIVE_BOAT_WINDOW_MS && p.time <= fetchedAt + 60_000) {
+          boatTraffic = count;
         }
       }
-      return bestTemp !== null ? { ...p, temperature: bestTemp } : p;
+      // marine debris: always from mock (p.debris), never overwritten
+      return { ...p, temperature, turbidity, boatTraffic, debris: p.debris };
     });
     return {
       mergedDataset: merged,
       dailyDataset: getDailyAggregatedSeries(merged),
     };
-  }, [mounted, dataset, liveOceanData]);
+  }, [mounted, dataset, liveOceanData, liveTurbidityData, liveBoatTraffic]);
   const debrisMortalityData = useMemo(() => (mounted ? getDebrisMortalitySeries7Days() : []), [mounted]);
   const historicalMortalityData = useMemo(
     () => (mounted ? getHistoricalMortalityByTemperature() : []),
@@ -145,12 +188,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (prevStationRef.current !== selectedStationId) {
       setLiveOceanData([]);
+      setLiveTurbidityData([]);
+      setLiveBoatTraffic(null);
       lastLiveOceanFetchAtRef.current = 0;
       prevStationRef.current = selectedStationId;
     }
   }, [selectedStationId]);
 
-  // Real-Time mode: fetch live ocean data for selected station; cache per tab switch (skip refetch if cache < 10 min old)
+  // Real-Time mode: fetch live ocean (temp), turbidity (USGS), and boat traffic (AIS) for selected station
   useEffect(() => {
     if (dashboardMode !== "realtime" || !mounted) return;
     const now = Date.now();
@@ -158,12 +203,19 @@ export default function DashboardPage() {
 
     const refresh = () => {
       setIsLoadingLiveOcean(true);
-      fetchLiveOceanData(liveOceanDataRef.current, selectedStationId)
-        .then((data) => {
-          setLiveOceanData(data);
-          lastLiveOceanFetchAtRef.current = Date.now();
-        })
-        .finally(() => setIsLoadingLiveOcean(false));
+      const station = getStationById(selectedStationId);
+      Promise.all([
+        fetchLiveOceanData(liveOceanDataRef.current, selectedStationId),
+        fetchLiveTurbidity(selectedStationId, liveTurbidityRef.current),
+        station ? fetchLiveBoatTraffic(station.lat, station.lon) : Promise.resolve(null),
+      ]).then(([tempData, turbData, boatCount]) => {
+        setLiveOceanData(tempData);
+        lastLiveOceanFetchAtRef.current = Date.now();
+        setLiveTurbidityData(turbData);
+        if (boatCount !== null) {
+          setLiveBoatTraffic({ count: boatCount, fetchedAt: Date.now() });
+        }
+      }).finally(() => setIsLoadingLiveOcean(false));
     };
 
     if (!cacheFresh) refresh();
@@ -383,7 +435,13 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   <ScientificSummaryCard />
                   <div className="rounded-lg border border-ocean-cyan/30 bg-ocean-cyan/5 px-4 py-3 flex flex-col justify-center">
-                    <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1">Health Status</p>
+                    <p className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-1 flex items-center gap-2">
+                      Health Status
+                      <InfoIcon
+                        ariaLabel="About health status ranges"
+                        content="Marine debris density ranges: 0–100 items/km² is healthy (green), 101–300 is caution (amber), and above 300 is critical (red). These thresholds are based on marine life risk research and help prioritize response."
+                      />
+                    </p>
                     <p className="text-ocean-text text-sm">
                       0–100 <span className="text-emerald-400">Healthy</span> · 101–300 <span className="text-amber-400">Caution</span> · &gt;300 <span className="text-red-400">Critical</span>
                     </p>

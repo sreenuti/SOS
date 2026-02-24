@@ -36,12 +36,16 @@ export default function VesselDensity({ count, isLive }: VesselDensityProps) {
           {count}
         </span>
         <span className="text-ocean-muted text-sm font-normal">vessels</span>
-        <span
-          className="text-ocean-muted/80 hover:text-ocean-cyan/90 cursor-help ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full border border-ocean-border/60 text-[10px] font-medium"
-          title={`Baseline 2000–2003: ${(BASELINE_VESSELS_ANNUAL_2000_2003 / 1000).toFixed(0)}k vessels/yr. Growth: ${growthPercent}% per year (Research Mode).`}
-          aria-label="More info: baseline and growth"
-        >
-          i
+        <span className="group relative inline-flex ml-1">
+          <span
+            className="flex h-4 w-4 items-center justify-center rounded-full border border-ocean-cyan/60 bg-ocean-cyan/10 text-ocean-cyan cursor-help text-xs font-semibold italic lowercase"
+            aria-label="How is vessel count calculated?"
+          >
+            i
+          </span>
+          <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-64 -translate-x-1/2 rounded-lg border border-ocean-border bg-ocean-card/95 px-3 py-2 text-xs text-ocean-text shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 normal-case">
+            Count of vessels within 500 m of the station. Baseline 2000–2003: {(BASELINE_VESSELS_ANNUAL_2000_2003 / 1000).toFixed(0)}k vessels/yr. Growth: {growthPercent}% per year from research trends. High traffic alert when count exceeds 15 (2026 projection).
+          </span>
         </span>
       </div>
       <p className="text-ocean-muted/80 text-xs mt-1">

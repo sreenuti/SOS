@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { ObservationLogEntry } from "@/lib/observationLog";
 import { formatLogTime } from "@/lib/observationLog";
+import InfoIcon from "./InfoIcon";
 
 interface LiveObservationLogProps {
   entries: ObservationLogEntry[];
@@ -17,9 +18,15 @@ export default function LiveObservationLog({ entries }: LiveObservationLogProps)
 
   return (
     <div className="glass-card border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl flex flex-col h-full min-h-0">
-      <h2 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider p-4 pb-2 flex-shrink-0 border-b border-ocean-border/40">
-        Live Observation Log
-      </h2>
+      <div className="flex items-center gap-2 p-4 pb-2 flex-shrink-0 border-b border-ocean-border/40">
+        <h2 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider">
+          Live Observation Log
+        </h2>
+        <InfoIcon
+          ariaLabel="About the observation log"
+          content="Alerts and cautions when metrics cross thresholds (e.g. high vessel count, elevated turbidity, marine debris in caution or critical range, or water temperature above baseline). Entries are generated as you move the timeline or when live data updates."
+        />
+      </div>
       <div
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2"

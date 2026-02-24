@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import { useStation } from "@/context/StationContext";
+import InfoIcon from "./InfoIcon";
 
 const MAP_CONTAINER_STYLE = { width: "100%", height: "340px", borderRadius: "0.5rem" };
 const DEFAULT_CENTER = { lat: 39.5, lng: -95.5 };
@@ -30,6 +31,7 @@ export default function CoastMap() {
 
   const mapOptions = useMemo<google.maps.MapOptions>(
     () => ({
+      mapTypeId: "satellite",
       disableDefaultUI: false,
       zoomControl: true,
       mapTypeControl: true,
@@ -54,7 +56,7 @@ export default function CoastMap() {
   );
 
   return (
-    <div className="glass-card border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm overflow-hidden">
+    <div className="glass-card border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm overflow-visible">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -63,8 +65,15 @@ export default function CoastMap() {
         aria-controls="coast-map-content"
         id="coast-map-heading"
       >
-        <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider">
+        <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
           National SOS Marine Network
+          <span onClick={(e) => e.stopPropagation()}>
+            <InfoIcon
+              ariaLabel="About the map"
+              placement="below"
+              content="NOAA CO-OPS stations along the U.S. coast. Click a marker to load live water temperature, turbidity, and vessel data for that station. The selected station drives all real-time metrics and regional baselines."
+            />
+          </span>
         </h3>
         <span
           className="text-ocean-cyan shrink-0 transition-transform duration-200"
@@ -116,6 +125,12 @@ export default function CoastMap() {
                   key={station.id}
                   position={{ lat: station.lat, lng: station.lon }}
                   title={`${station.name} (${station.zone})`}
+                  label={{
+                    text: station.name,
+                    color: "#ffffff",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                  }}
                   onClick={() => setSelectedStationId(station.id)}
                   zIndex={station.id === selectedStationId ? 10 : 1}
                 />

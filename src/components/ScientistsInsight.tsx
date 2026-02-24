@@ -2,6 +2,7 @@
 
 import type { MetricsAtTime } from "@/lib/mockData";
 import { generateScientistsInsight } from "@/lib/scientistsInsight";
+import InfoIcon from "./InfoIcon";
 
 interface ScientistsInsightProps {
   metrics: MetricsAtTime;
@@ -22,9 +23,15 @@ export default function ScientistsInsight({ metrics }: ScientistsInsightProps) {
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider mb-1.5">
-            Scientist&apos;s Insight
-          </h3>
+          <div className="flex items-center gap-2 mb-1.5">
+            <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider">
+              Scientist&apos;s Insight
+            </h3>
+            <InfoIcon
+              ariaLabel="About scientist's insight"
+              content="A short interpretation of the current metrics (vessel count, turbidity, water temp, marine debris). The message updates as you move the timeline or change the station. It highlights when values are in caution or critical ranges."
+            />
+          </div>
           <p className="text-ocean-text text-sm md:text-base leading-relaxed">
             {insight}
           </p>

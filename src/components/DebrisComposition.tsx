@@ -1,5 +1,7 @@
 "use client";
 
+import InfoIcon from "./InfoIcon";
+
 /**
  * Debris composition breakdown for biologists: what the debris is.
  * Percentages reflect typical coastal marine debris composition.
@@ -14,8 +16,12 @@ export default function DebrisComposition() {
   return (
     <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+        <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider flex items-center gap-2">
           Debris Composition
+          <InfoIcon
+            ariaLabel="About debris composition"
+            content="Typical breakdown of marine debris by type. Single-use plastics (bottles, straws) and fishing gear (nets, lines) pose the greatest risk to dolphins. Percentages are from coastal monitoring studies and help target cleanup and policy."
+          />
         </span>
       </div>
       <p className="text-ocean-muted text-xs mb-3">

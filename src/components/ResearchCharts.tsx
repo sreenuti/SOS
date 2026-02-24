@@ -14,6 +14,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { ResearchYearPoint } from "@/lib/researchModeData";
+import InfoIcon from "./InfoIcon";
 
 const GLASS_STYLE = {
   backgroundColor: "rgba(13, 33, 55, 0.95)",
@@ -32,9 +33,15 @@ export function ResearchHealthTaxChart({ data }: { data: ResearchYearPoint[] }) 
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Health Tax — Survival Strength vs Temperature (2000–2026)
-      </h3>
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Health Tax — Survival Strength vs Temperature (2000–2026)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Survival strength % (left axis) and water temperature °F (right axis) by year. Each 1°F above the regional baseline reduces survival strength by 2%. The dashed line at 94% marks the healthy threshold. Regional baseline depends on the selected station."
+        />
+      </div>
       <p className="text-ocean-muted/90 text-xs mb-2">
         Every 1°F above 85°F reduces survival strength by 2%.
       </p>
@@ -111,9 +118,15 @@ export function ResearchEntanglementMortalityChart({ data }: { data: ResearchYea
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Entanglement Risk & Mortality (2000–2026)
-      </h3>
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Entanglement Risk & Mortality (2000–2026)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Entanglement risk (1 in N sightings, shown as %) and mortality risk % by year. Risk increases from about 1 in 50 in 2000 to 1 in 5 by 2026 based on marine debris and vessel trends. Data is from Dolphin Research Charts regional projections."
+        />
+      </div>
       <p className="text-ocean-muted/90 text-xs mb-2">
         Entanglement risk climbs from 1 in 50 to 1 in 5.
       </p>
@@ -191,9 +204,15 @@ export function ResearchTemperatureMortalityChart({ data }: { data: ResearchYear
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Temperature vs Dolphin Mortality (2000–2026)
-      </h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Temperature vs Dolphin Mortality (2000–2026)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Water temperature °F (left) and dolphin mortality min–max range (right) by year. Shows how warmer years correlate with higher mortality. Regional temperature and mortality use the selected station and research projections (2000–2026)."
+        />
+      </div>
       <ResponsiveContainer width="100%" height={240}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.08)" />

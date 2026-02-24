@@ -1,7 +1,7 @@
 "use client";
 
 import type { MetricsAtTime } from "@/lib/mockData";
-import { getSurvivalScore, THERMAL_STRESS_TEMP_THRESHOLD_F } from "@/lib/survivalScore";
+import { getSurvivalScore, getHistoricalBaselineTempF, THERMAL_STRESS_TEMP_THRESHOLD_F } from "@/lib/survivalScore";
 import { BASELINE_TEMP_2000_2003_F } from "@/lib/baselines";
 import DebrisHealthBadge from "./DebrisHealthBadge";
 import VesselDensity from "./VesselDensity";
@@ -64,6 +64,17 @@ export default function MetricCards({ metrics, isLive = false, stationLabel, sta
               {metrics.turbidity}
             </span>
             <span className="text-ocean-muted text-sm">NTU</span>
+            <span className="group relative inline-flex">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full border border-ocean-cyan/60 bg-ocean-cyan/10 text-ocean-cyan cursor-help text-xs font-semibold italic lowercase"
+                aria-label="How are water quality and temperature calculated?"
+              >
+                i
+              </span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-64 -translate-x-1/2 rounded-lg border border-ocean-border bg-ocean-card/95 px-3 py-2 text-xs text-ocean-text shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 normal-case">
+                Turbidity in NTU (Nephelometric Turbidity Units); natural background often 10–60 in estuaries. Water temp from live NOAA or merged series. Delta vs 2000–2003 baseline ({BASELINE_TEMP_2000_2003_F}°F). Caution when turbidity &gt;30 NTU.
+              </span>
+            </span>
             {metrics.turbidity > 30 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm font-semibold uppercase tracking-wider bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/50">
                 <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-hidden />
@@ -85,8 +96,19 @@ export default function MetricCards({ metrics, isLive = false, stationLabel, sta
       </div>
       <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
         <div className="flex items-center justify-between">
-          <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider flex items-center gap-1.5">
             Marine Debris
+            <span className="group relative inline-flex">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full border border-ocean-cyan/60 bg-ocean-cyan/10 text-ocean-cyan cursor-help text-xs font-semibold italic lowercase"
+                aria-label="How is marine debris calculated?"
+              >
+                i
+              </span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-64 -translate-x-1/2 rounded-lg border border-ocean-border bg-ocean-card/95 px-3 py-2 text-xs text-ocean-text shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 normal-case">
+                Density in items per km². <strong>Healthy:</strong> 0–100 · <strong>Caution:</strong> 101–300 · <strong>Critical:</strong> &gt;300. Based on marine life risk thresholds.
+              </span>
+            </span>
           </span>
           <span className="text-ocean-cyan/80 w-8 h-8 flex items-center justify-center">
             <DebrisIcon />
@@ -102,8 +124,19 @@ export default function MetricCards({ metrics, isLive = false, stationLabel, sta
       </div>
       <div className="glass-card p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl min-h-[120px] flex flex-col justify-between">
         <div className="flex items-center justify-between">
-          <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          <span className="text-ocean-muted text-sm font-medium uppercase tracking-wider flex items-center gap-1.5">
             Survival Score
+            <span className="group relative inline-flex">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full border border-ocean-cyan/60 bg-ocean-cyan/10 text-ocean-cyan cursor-help text-xs font-semibold italic lowercase"
+                aria-label="How is Survival Score calculated?"
+              >
+                i
+              </span>
+              <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-64 -translate-x-1/2 rounded-lg border border-ocean-border bg-ocean-card/95 px-3 py-2 text-xs text-ocean-text shadow-lg opacity-0 transition-opacity duration-150 group-hover:opacity-100 normal-case">
+                <strong>Formula:</strong> 100 − ((Water temp °F − baseline °F) × 2). Each 1°F above the regional baseline reduces the score by 2%. Baseline here: {getHistoricalBaselineTempF(stationId)}°F. Score is capped 0–100%. Healthy ≥94%.
+              </span>
+            </span>
           </span>
           <span className="text-ocean-cyan/80 w-8 h-8 flex items-center justify-center">
             <SurvivalScoreIcon />

@@ -13,6 +13,8 @@ import {
   ReferenceLine,
 } from "recharts";
 import type { HistoricalMortalityPoint } from "@/lib/historicalMortalityData";
+import InfoIcon from "./InfoIcon";
+import { useStation } from "@/context/StationContext";
 
 const BLUE = "#3b82f6";
 const RED = "#ef4444";
@@ -69,13 +71,25 @@ export default function HistoricalMortalityChart({
   data,
   currentTemperatureF,
 }: HistoricalMortalityChartProps) {
+  const { selectedStation, selectedStationId } = useStation();
   const chartData = useMemo(() => [...data], [data]);
+  const stationLabel = selectedStation
+    ? `${selectedStation.name} (${selectedStationId})`
+    : selectedStationId
+      ? `Station ${selectedStationId}`
+      : "Bahama";
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[360px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Bahama Dolphin Mortality — Historical (Water Temperature °F)
-      </h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          {stationLabel} Dolphin Mortality — Historical (Water Temperature °F)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content={`Historical relationship between water temperature (°F) and dolphin mortality (min and max estimates per temperature band) for the selected station. The vertical line shows current live temperature when available. Key events are noted on the data points.`}
+        />
+      </div>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart
           data={chartData}
@@ -109,7 +123,7 @@ export default function HistoricalMortalityChart({
             tick={{ fill: "#94a3b8", fontSize: 11 }}
             domain={[0, "auto"]}
             label={{
-              value: "Bahama Dolphin Mortality",
+              value: `${stationLabel} Dolphin Mortality`,
               angle: -90,
               position: "insideLeft",
               fill: "#94a3b8",

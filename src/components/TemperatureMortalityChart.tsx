@@ -15,6 +15,7 @@ import {
 import type { TimeSeriesPoint } from "@/lib/mockData";
 import { getHealthTaxReductionPct } from "@/lib/survivalScore";
 import { useStation } from "@/context/StationContext";
+import InfoIcon from "./InfoIcon";
 
 const TEMP_COLOR = "#06b6d4";
 const CORAL_RED = "#f08080";
@@ -41,9 +42,15 @@ export default function TemperatureMortalityChart({ data }: TemperatureMortality
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Water Temperature & Dolphin Mortality (30 days)
-      </h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Water Temperature & Dolphin Mortality (30 days)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Daily water temperature (left axis) and 7-day rolling average of dolphin mortality (right axis). Survival strength drops 2% per °F above the regional baseline. Data from the selected NOAA station and merged 30-day series."
+        />
+      </div>
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.08)" />

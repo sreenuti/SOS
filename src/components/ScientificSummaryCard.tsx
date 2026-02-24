@@ -3,6 +3,7 @@
 import { getNoaaApiUrl, isNoaaConfigured } from "@/lib/noaaService";
 import { getHistoricalBaselineTempF } from "@/lib/survivalScore";
 import { useStation } from "@/context/StationContext";
+import InfoIcon from "./InfoIcon";
 
 /**
  * Summary card that displays NOAA config, current zone, and Health Tax baseline.
@@ -16,9 +17,15 @@ export default function ScientificSummaryCard() {
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/40 backdrop-blur-sm shadow-xl">
-      <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider mb-3">
-        Scientific summary
-      </h3>
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="text-ocean-cyan text-sm font-semibold uppercase tracking-wider">
+          Scientific summary
+        </h3>
+        <InfoIcon
+          ariaLabel="About scientific summary"
+          content="Current zone and NOAA station for the selected map pin. Health Tax baseline is the regional historical temperature used in the survival formula (currentTemp − baseline) × 2. The NOAA API URL is where live water and tide data are fetched."
+        />
+      </div>
       <dl className="space-y-2 text-sm">
         {selectedStation && (
           <div>

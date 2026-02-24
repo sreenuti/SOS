@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import type { TimeSeriesPoint } from "@/lib/mockData";
+import InfoIcon from "./InfoIcon";
 
 const VESSEL_BLUE = "#3b82f6";
 const CORAL_RED = "#f08080";
@@ -38,9 +39,15 @@ export default function BoatTrafficMortalityChart({ data }: BoatTrafficMortality
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Nearby Vessels (within 500m) & Dolphin Mortality (30 days)
-      </h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Nearby Vessels (within 500m) & Dolphin Mortality (30 days)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Vessel count within 500 m of the station (left axis) and 7-day rolling average of dolphin mortality (right axis). High traffic can increase stress and collision risk. Data from AIS when configured, otherwise from research-based projections."
+        />
+      </div>
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={chartData} margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(45, 212, 191, 0.08)" />

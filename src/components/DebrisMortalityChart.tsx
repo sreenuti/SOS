@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import type { DebrisMortalityPoint } from "@/lib/mockData";
+import InfoIcon from "./InfoIcon";
 
 const DEBRIS_HIGH = 300;
 const MORTALITY_HIGH = 2;
@@ -48,9 +49,15 @@ export default function DebrisMortalityChart({ data }: DebrisMortalityChartProps
 
   return (
     <div className="glass-card p-4 md:p-6 border border-ocean-border/60 bg-ocean-card/30 backdrop-blur-sm h-[320px] w-full">
-      <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider mb-4">
-        Marine Debris Density & Dolphin Mortality (30 days)
-      </h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-ocean-muted text-sm font-medium uppercase tracking-wider">
+          Marine Debris Density & Dolphin Mortality (30 days)
+        </h3>
+        <InfoIcon
+          ariaLabel="About this chart"
+          content="Marine debris density in items per km² (left axis) and 7-day rolling average of dolphin mortality (right axis). At ~687 MT projected accumulation, entanglement risk is about 1 in 5 sightings. Debris data here is from research-based projections."
+        />
+      </div>
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart
           data={chartData}

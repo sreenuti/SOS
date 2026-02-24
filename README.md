@@ -149,6 +149,8 @@ Create `.env.local` (or set in Vercel) for production:
 | `NEXT_PUBLIC_NOAA_API_URL` | NOAA CO-OPS datagetter base URL | `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter` |
 | `NEXT_PUBLIC_HISTORICAL_BASELINE_TEMP` | Fallback Health Tax baseline °F when station has none | `85.2` |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps API key for the National SOS Marine Network map (station pins) | — |
+| `NEXT_PUBLIC_AIS_API_URL` | AIS vessel API base URL. For MyShipTracking use `https://api.myshiptracking.com/api/v2/vessel/zone` | — |
+| `NEXT_PUBLIC_AIS_API_KEY` | API key for the AIS provider (e.g. from MyShipTracking account → API Key Details). Sent as Bearer / x-api-key | — |
 
 Stations and regional baselines are defined in `src/lib/noaaStations.ts` (Santa Monica, Galveston, Key West, Charleston, Woods Hole).
 
